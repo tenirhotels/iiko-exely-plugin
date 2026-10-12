@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <!-- iikoFront подхватывает плагины из dll с именем Resto.Front.Api.* -->
+    <AssemblyName>Resto.Front.Api.IikoExely</AssemblyName>
+    <RootNamespace>IikoExely.Plugin</RootNamespace>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Resto.Front.Api.V8" Version="8.7.6032" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <ProjectReference Include="..\IikoExely.Core\IikoExely.Core.csproj" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+</Project>
