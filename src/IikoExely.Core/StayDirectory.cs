@@ -22,6 +22,7 @@ namespace IikoExely
         private readonly Func<DateTime> _now;
         private readonly object _lock = new object();
         private List<InHouseGuest> _guests = new List<InHouseGuest>();
+        private List<Stay> _allActive = new List<Stay>();
         private CatalogResponse _catalog = new CatalogResponse();
         private readonly Dictionary<string, (string updated, string names)> _nameCache = new Dictionary<string, (string, string)>();
         private DateTime _loadedAt = DateTime.MinValue;
@@ -39,6 +40,9 @@ namespace IikoExely
         public bool IsStale { get; private set; }
         public CatalogResponse Catalog { get { lock (_lock) return _catalog; } }
 
+        /// <summary>Все активные стоянки (ожидаются и проживают) — основа прогноза на будущие дни.</summary>
+        public IReadOnlyList<Stay> AllActive { get { lock (_lock) return _allActive.ToList(); } }
+
         public IReadOnlyList<InHouseGuest> Current { get { lock (_lock) return _guests.ToList(); } }
 
         /// <summary>Обновляет данные, если они старше refreshSeconds (или force). Возвращает текущий список.</summary>
@@ -49,9 +53,10 @@ namespace IikoExely
                     return _guests.ToList();
             try
             {
-                var stays = (await _hub.GetActiveStaysAsync(ct).ConfigureAwait(false)).Stays
-                    .Where(s => s.IsCheckedIn && !string.IsNullOrEmpty(s.Id))
+                var active = (await _hub.GetActiveStaysAsync(ct).ConfigureAwait(false)).Stays
+                    .Where(s => !string.IsNullOrEmpty(s.Id))
                     .ToList();
+                var stays = active.Where(s => s.IsCheckedIn).ToList();
                 CatalogResponse catalog = null;
                 try { catalog = await _hub.GetCatalogAsync(ct).ConfigureAwait(false); }
                 catch (HubException e) when (e.Status == 403) { /* нет права catalog: тариф определяется по услугам стоянки */ }
@@ -63,6 +68,7 @@ namespace IikoExely
                 lock (_lock)
                 {
                     _guests = result;
+                    _allActive = active;
                     if (catalog != null) _catalog = catalog;
                     _loadedAt = _now();
                     LastError = null;

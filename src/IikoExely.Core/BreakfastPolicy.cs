@@ -6,23 +6,28 @@ namespace IikoExely
 {
     public enum BreakfastRight
     {
-        /// <summary>Завтрак включён в тариф и ещё есть неиспользованные порции.</summary>
+        /// <summary>Завтрак включён и ещё есть неиспользованные порции.</summary>
         Included,
         /// <summary>Завтрак включён, но все порции за сегодня уже выданы.</summary>
         Exhausted,
-        /// <summary>Завтрака в тарифе нет — гость проживающий, но платит сам (скидка по уровню).</summary>
+        /// <summary>Завтрака в тарифе (на этот день) нет — гость проживающий, но платит сам.</summary>
         NotIncluded,
-        /// <summary>Гость сегодня не проживает (до заезда или после выезда).</summary>
+        /// <summary>Гость в этот день не проживает.</summary>
         OutsideStay,
     }
 
     public class BreakfastDecision
     {
         public BreakfastRight Right { get; set; }
-        /// <summary>Сколько порций положено на день.</summary>
-        public int Portions { get; set; }
-        public int Used { get; set; }
-        public int Remaining => Math.Max(Portions - Used, 0);
+        public int AdultPortions { get; set; }
+        public int ChildPortions { get; set; }
+        public int UsedAdults { get; set; }
+        public int UsedChildren { get; set; }
+        public int Portions => AdultPortions + ChildPortions;
+        public int Used => UsedAdults + UsedChildren;
+        public int RemainingAdults => Math.Max(AdultPortions - UsedAdults, 0);
+        public int RemainingChildren => Math.Max(ChildPortions - UsedChildren, 0);
+        public int Remaining => RemainingAdults + RemainingChildren;
         public string Note { get; set; }
     }
 
@@ -61,31 +66,32 @@ namespace IikoExely
             !string.IsNullOrWhiteSpace(name) &&
             _cfg.BreakfastKeywords.Any(k => name.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0);
 
-        public int Portions(Stay stay) =>
-            Math.Max(stay.Adults + (_cfg.ChildrenGetBreakfast ? stay.Children : 0), 1);
+        public int AdultPortions(Stay stay) => Math.Max(stay.Adults, stay.Children > 0 ? 0 : 1);
+        public int ChildPortions(Stay stay) => _cfg.ChildrenGetBreakfast ? Math.Max(stay.Children, 0) : 0;
 
-        /// <summary>Положен ли завтрак в указанную дату (местное время отеля).</summary>
-        public BreakfastDecision Evaluate(Stay stay, DateTime day, int usedToday)
+        /// <summary>Положен ли завтрак в указанную дату (местное время отеля) и сколько порций осталось.</summary>
+        public BreakfastDecision Evaluate(Stay stay, DateTime day, int usedAdults = 0, int usedChildren = 0)
         {
             var d = day.Date;
             var arrival = (stay.ActualInTime ?? stay.PlannedInTime)?.Date;
             var departure = (stay.ActualOutTime ?? stay.PlannedOutTime)?.Date;
             if (arrival == null || departure == null || d < arrival || d > departure)
-                return new BreakfastDecision { Right = BreakfastRight.OutsideStay, Note = "не проживает сегодня" };
+                return new BreakfastDecision { Right = BreakfastRight.OutsideStay, Note = "не проживает в этот день" };
 
-            var portions = Portions(stay);
-            var included = HasIncludedBreakfast(stay);
-            if (included)
+            if (!HasIncludedBreakfast(stay))
+                return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Note = "завтрак не входит в тариф" };
+            if (d == arrival && !_cfg.BreakfastOnArrivalDay)
+                return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Note = "день заезда: завтрак не положен" };
+            if (d == departure && !_cfg.BreakfastOnDepartureDay)
+                return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Note = "день выезда: завтрак не положен" };
+
+            var dec = new BreakfastDecision
             {
-                if (d == arrival && !_cfg.BreakfastOnArrivalDay)
-                    return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Portions = 0, Note = "день заезда: завтрак не положен" };
-                if (d == departure && !_cfg.BreakfastOnDepartureDay)
-                    return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Portions = 0, Note = "день выезда: завтрак не положен" };
-            }
-            if (!included)
-                return new BreakfastDecision { Right = BreakfastRight.NotIncluded, Portions = 0, Note = "завтрак не входит в тариф" };
-
-            var dec = new BreakfastDecision { Portions = portions, Used = usedToday };
+                AdultPortions = AdultPortions(stay),
+                ChildPortions = ChildPortions(stay),
+                UsedAdults = usedAdults,
+                UsedChildren = usedChildren,
+            };
             dec.Right = dec.Remaining > 0 ? BreakfastRight.Included : BreakfastRight.Exhausted;
             return dec;
         }

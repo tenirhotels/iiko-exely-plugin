@@ -139,19 +139,46 @@ public class CoreTests
         Assert.Equal("Проживающий", DiscountSelector.ResidentDiscountName(MakeStay(), cfg));
     }
 
+    static UsageEntry U(string stay, int adults, int children, string order, string kind = UsageStore.KindIncluded, string date = "2026-10-13", string time = "2026-10-13T08:10:00") =>
+        new UsageEntry { Date = date, Time = time, StayId = stay, Kind = kind, Adults = adults, Children = children, OrderId = order, Employee = "Кассир" };
+
     [Fact]
-    public void Usage_store_sums_portions_per_day_and_persists()
+    public void Usage_store_sums_adults_and_children_per_day_and_persists()
     {
         var path = TempFile();
         var u = new UsageStore(path);
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "s1", Kind = UsageStore.KindIncluded, Persons = 1, OrderId = "o1" });
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "s1", Kind = UsageStore.KindIncluded, Persons = 1, OrderId = "o2" });
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "s1", Kind = UsageStore.KindDiscount, Persons = 5, OrderId = "o3" });
-        u.Add(new UsageEntry { Date = "2026-10-14", StayId = "s1", Kind = UsageStore.KindIncluded, Persons = 2, OrderId = "o4" });
+        u.Add(U("s1", 1, 0, "o1"));
+        u.Add(U("s1", 1, 1, "o2"));
+        u.Add(U("s1", 5, 0, "o3", UsageStore.KindDiscount));
+        u.Add(U("s1", 2, 0, "o4", date: "2026-10-14"));
+        Assert.Equal((2, 1), u.Used("s1", Day));
+        Assert.Equal((2, 1), new UsageStore(path).Used("s1", Day));
+    }
+
+    [Fact]
+    public void Cancel_requires_reason_and_frees_portions()
+    {
+        var u = new UsageStore(TempFile());
+        var e = U("s1", 2, 0, "o1"); u.Add(e);
+        Assert.Throws<ArgumentException>(() => u.Cancel(e.Id, "  ", "М", Day));
         Assert.Equal(2, u.UsedPortions("s1", Day));
-        Assert.Equal(2, new UsageStore(path).UsedPortions("s1", Day));
-        Assert.Equal(1, u.RemoveOrder("o1"));
-        Assert.Equal(1, u.UsedPortions("s1", Day));
+        var c = u.Cancel(e.Id, "ошибочная отметка", "Менеджер", Day);
+        Assert.True(c.Cancelled);
+        Assert.Equal("ошибочная отметка", c.CancelReason);
+        Assert.Equal(0, u.UsedPortions("s1", Day));
+        Assert.Null(u.Cancel(e.Id, "ещё раз", "М", Day)); // повторная отмена
+        Assert.Single(u.ForDay(Day)); // запись осталась в журнале
+    }
+
+    [Fact]
+    public void Duplicate_order_mark_is_detected_but_cancelled_one_is_not()
+    {
+        var u = new UsageStore(TempFile());
+        var e = U("s1", 1, 0, "o1"); u.Add(e);
+        Assert.True(u.HasActiveEntry("o1", "s1", UsageStore.KindIncluded));
+        Assert.False(u.HasActiveEntry("o2", "s1", UsageStore.KindIncluded));
+        u.Cancel(e.Id, "ошибка", "М", Day);
+        Assert.False(u.HasActiveEntry("o1", "s1", UsageStore.KindIncluded));
     }
 
     [Fact]
@@ -161,44 +188,237 @@ public class CoreTests
         File.WriteAllText(path, "{не json");
         var u = new UsageStore(path);
         Assert.Equal(0, u.UsedPortions("s1", Day));
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "s1", Kind = UsageStore.KindIncluded, Persons = 1, OrderId = "o1" });
+        u.Add(U("s1", 1, 0, "o1"));
         Assert.Equal(1, new UsageStore(path).UsedPortions("s1", Day));
     }
 
+    // --- реестр ---
+
+    static string TempDir() { var d = Path.Combine(Path.GetTempPath(), "iikoexely-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(d); return d; }
+    static readonly DateTime Morning = new DateTime(2026, 10, 13, 8, 30, 0);
+    static readonly DateTime After = new DateTime(2026, 10, 13, 11, 30, 0);
+
+    static BreakfastRegistry NewRegistry(PluginConfig cfg = null) => new BreakfastRegistry(cfg ?? new PluginConfig(), new RegistryStore(TempDir()));
+
+    static InHouseGuest G(string id, string room, string names = "Иванов И.", bool breakfast = true, int adults = 2, int children = 0, string pout = "2026-10-15T12:00:00") =>
+        new InHouseGuest { Stay = MakeStay(id, room, breakfast: breakfast, adults: adults, children: children, pout: pout), Names = names };
+
     [Fact]
-    public void Report_lists_not_came_partial_and_discounted()
+    public void Registry_statuses_before_and_after_breakfast_window()
     {
         var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
         var u = new UsageStore(TempFile());
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "A", Kind = UsageStore.KindIncluded, Persons = 2, OrderId = "1" });
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "B", Kind = UsageStore.KindIncluded, Persons = 1, OrderId = "2" });
-        u.Add(new UsageEntry { Date = "2026-10-13", StayId = "D", Kind = UsageStore.KindDiscount, Persons = 1, Discount = "Проживающий Gold", OrderId = "3" });
-        var guests = new[]
-        {
-            new InHouseGuest { Stay = MakeStay("A", "101"), Names = "Иванов И." },
-            new InHouseGuest { Stay = MakeStay("B", "102"), Names = "Петров П." },
-            new InHouseGuest { Stay = MakeStay("C", "103"), Names = "Сидоров С." },
-            new InHouseGuest { Stay = MakeStay("D", "104", breakfast: false), Names = "Орлов О." },
-            new InHouseGuest { Stay = MakeStay("E", "105", pin: "2026-10-20T14:00:00", pout: "2026-10-22T12:00:00") }, // ещё не заехал
-        };
-        var rep = BreakfastReport.Build(guests, new BreakfastPolicy(cfg), u, Day);
-        Assert.Equal(4, rep.Rows.Count);
-        Assert.Equal(new[] { "103" }, rep.NotCame.Select(r => r.Room).ToArray());
-        Assert.Equal(new[] { "102" }, rep.Partial.Select(r => r.Room).ToArray());
-        Assert.Equal(new[] { "104" }, rep.PaidWithDiscount.Select(r => r.Room).ToArray());
-        Assert.Equal(6, rep.EntitledPortions);
-        Assert.Equal(3, rep.UsedPortions);
-        Assert.Contains("Не пришли", rep.Summary());
-        Assert.Contains("Сидоров", rep.Summary());
+        u.Add(U("A", 2, 0, "1"));                 // всё выдано
+        u.Add(U("B", 1, 0, "2"));                 // частично
+        var guests = new[] { G("A", "101"), G("B", "102"), G("C", "103"), G("D", "104", breakfast: false) };
+        var policy = new BreakfastPolicy(cfg);
+
+        var before = reg.Sync(guests, policy, u, Morning).Rows.ToDictionary(r => r.StayId);
+        Assert.Equal(RegistryStatus.Used, before["A"].Status);
+        Assert.Equal(RegistryStatus.Partial, before["B"].Status);
+        Assert.Equal(RegistryStatus.Expected, before["C"].Status);
+        Assert.Equal(RegistryStatus.NotEntitled, before["D"].Status);
+
+        var after = reg.Sync(guests, policy, u, After).Rows.ToDictionary(r => r.StayId);
+        Assert.Equal(RegistryStatus.NotUsed, after["C"].Status);
+        Assert.Equal(RegistryStatus.Partial, after["B"].Status);
     }
 
     [Fact]
-    public void Csv_escapes_quotes_and_formula_injection()
+    public void Registry_shows_adults_and_children_separately_and_totals()
     {
-        var rep = new BreakfastReport { Day = Day };
-        rep.Rows.Add(new ReportRow { Room = "1", Names = "=HYPERLINK(\"x\")", Decision = new BreakfastDecision { Right = BreakfastRight.Included, Portions = 1 } });
-        var csv = rep.ToCsv();
-        Assert.Contains("\"'=HYPERLINK(\"\"x\"\")\"", csv);
+        var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
+        var u = new UsageStore(TempFile());
+        u.Add(U("A", 1, 1, "1"));
+        var day = reg.Sync(new[] { G("A", "101", adults: 2, children: 2) }, new BreakfastPolicy(cfg), u, Morning);
+        var r = day.Rows.Single();
+        Assert.Equal((2, 2, 1, 1), (r.AdultPortions, r.ChildPortions, r.UsedAdults, r.UsedChildren));
+        Assert.Equal(2, day.EntitledAdults); Assert.Equal(2, day.EntitledChildren);
+        Assert.Equal(1, day.UsedAdults); Assert.Equal(1, day.UsedChildren);
+    }
+
+    [Fact]
+    public void Registry_notices_booking_changes_and_records_source_and_time()
+    {
+        var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
+        var u = new UsageStore(TempFile());
+        var policy = new BreakfastPolicy(cfg);
+        reg.Sync(new[] { G("A", "101", adults: 2) }, policy, u, Morning);
+
+        // изменение числа гостей и продление проживания
+        var r = reg.Sync(new[] { G("A", "101", adults: 3, pout: "2026-10-17T12:00:00") }, policy, u, Morning.AddMinutes(10)).Rows.Single();
+        Assert.Equal(3, r.AdultPortions);
+        Assert.Contains("гости 2+0→3+0", r.LastChangeNote);
+        Assert.Contains("выезд 2026-10-15→2026-10-17", r.LastChangeNote);
+        Assert.Equal("Exely/хаб", r.LastChangeSource);
+        Assert.Equal(Morning.AddMinutes(10).ToString("s"), r.LastChangeAt);
+
+        // пересинхронизация без изменений не трогает метку
+        var again = reg.Sync(new[] { G("A", "101", adults: 3, pout: "2026-10-17T12:00:00") }, policy, u, Morning.AddMinutes(20)).Rows.Single();
+        Assert.Equal(r.LastChangeAt, again.LastChangeAt);
+    }
+
+    [Fact]
+    public void Registry_takes_last_change_from_cashier_action_and_cancellation()
+    {
+        var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
+        var u = new UsageStore(TempFile());
+        var policy = new BreakfastPolicy(cfg);
+        reg.Sync(new[] { G("A", "101") }, policy, u, Morning);
+
+        var e = U("A", 2, 0, "1", time: "2026-10-13T08:40:00"); e.Employee = "Айгуль"; e.OrderNumber = 77; u.Add(e);
+        var r = reg.Sync(new[] { G("A", "101") }, policy, u, Morning.AddMinutes(15)).Rows.Single();
+        Assert.Equal("iiko: Айгуль", r.LastChangeSource);
+        Assert.Contains("заказ 77", r.LastChangeNote);
+        Assert.Equal("2026-10-13T08:40:00", r.LastChangeAt);
+
+        u.Cancel(e.Id, "не тот гость", "Менеджер", new DateTime(2026, 10, 13, 8, 50, 0));
+        r = reg.Sync(new[] { G("A", "101") }, policy, u, Morning.AddMinutes(25)).Rows.Single();
+        Assert.Equal(RegistryStatus.Expected, r.Status);
+        Assert.Equal("iiko: Менеджер", r.LastChangeSource);
+        Assert.Contains("не тот гость", r.LastChangeNote);
+    }
+
+    [Fact]
+    public void Early_checkout_before_breakfast_cancels_row_but_after_eating_keeps_it()
+    {
+        var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
+        var u = new UsageStore(TempFile());
+        var policy = new BreakfastPolicy(cfg);
+        u.Add(U("B", 2, 0, "1"));
+        reg.Sync(new[] { G("A", "101"), G("B", "102") }, policy, u, Morning);
+
+        var rows = reg.Sync(new InHouseGuest[0], policy, u, Morning.AddMinutes(30)).Rows.ToDictionary(r => r.StayId);
+        Assert.Equal(RegistryStatus.Cancelled, rows["A"].Status);
+        Assert.Contains("выезд", rows["A"].LastChangeNote);
+        Assert.Equal(RegistryStatus.Used, rows["B"].Status);
+    }
+
+    [Fact]
+    public void Registry_counts_extra_and_discount_persons_and_exports_csv()
+    {
+        var cfg = new PluginConfig();
+        var reg = NewRegistry(cfg);
+        var u = new UsageStore(TempFile());
+        var x = U("A", 1, 0, "2"); x.Extra = true; x.ApprovedBy = "Менеджер";
+        u.Add(U("A", 2, 0, "1")); u.Add(x); u.Add(U("A", 1, 0, "3", UsageStore.KindDiscount));
+        var day = reg.Sync(new[] { G("A", "101", names: "=Иванов") }, new BreakfastPolicy(cfg), u, Morning);
+        var r = day.Rows.Single();
+        Assert.Equal(1, r.ExtraPersons);
+        Assert.Equal(1, r.DiscountPersons);
+        Assert.Equal(RegistryStatus.Used, r.Status);
+        Assert.Contains("\"'=Иванов\"", day.ToCsv());
+    }
+
+    // --- прогноз ---
+
+    [Fact]
+    public void Forecast_uses_entitlements_and_history_attendance_and_slots()
+    {
+        var cfg = new PluginConfig { ForecastHistoryDays = 3, ForecastSlotMinutes = 30 };
+        var store = new RegistryStore(TempDir());
+        var u = new UsageStore(TempFile());
+        var today = new DateTime(2026, 10, 13);
+        // вчера: положено 4 взрослых + 2 ребёнка, пришли 2 взрослых + 2 ребёнка
+        store.Save(new DayRegistry
+        {
+            Day = "2026-10-12",
+            Rows =
+            {
+                new RegistryRow { StayId = "x", AdultPortions = 4, ChildPortions = 2, UsedAdults = 2, UsedChildren = 2, StatusName = "Used" },
+            },
+        }, today.AddDays(-1));
+        u.Add(U("x", 1, 1, "h1", date: "2026-10-12", time: "2026-10-12T07:40:00"));
+        u.Add(U("x", 1, 1, "h2", date: "2026-10-12", time: "2026-10-12T08:10:00"));
+
+        var stays = new List<Stay> { MakeStay("A", adults: 2, children: 2), MakeStay("B", adults: 2), MakeStay("N", breakfast: false) };
+        var f = BreakfastForecast.Build(stays, new BreakfastPolicy(cfg), cfg, store, u, today, today);
+        Assert.Equal((4, 2, 2), (f.EntitledAdults, f.EntitledChildren, f.Rooms));
+        Assert.Equal(1, f.HistoryDays);
+        Assert.Equal(0.5, f.AdultAttendance);
+        Assert.Equal(1.0, f.ChildAttendance);
+        Assert.Equal((2, 2), (f.ExpectedAdults, f.ExpectedChildren));
+        Assert.Equal(new[] { "07:30", "08:00" }, f.Slots.Select(s => s.Start).ToArray());
+        Assert.Equal(2, f.Slots[0].ExpectedPeople);
+        Assert.Contains("Прогноз завтраков", f.Text());
+    }
+
+    [Fact]
+    public void Forecast_without_history_equals_entitlements_and_future_day_includes_booked()
+    {
+        var cfg = new PluginConfig();
+        var today = new DateTime(2026, 10, 13);
+        var booked = MakeStay("B", pin: "2026-10-13T14:00:00", pout: "2026-10-16T12:00:00", adults: 2); booked.Status = "booked";
+        var stays = new List<Stay> { MakeStay("A", adults: 1), booked };
+        var f = BreakfastForecast.Build(stays, new BreakfastPolicy(cfg), cfg, new RegistryStore(TempDir()), new UsageStore(TempFile()), today, today);
+        Assert.Equal(1, f.EntitledAdults); // забронированный сегодня не завтракает
+        Assert.Equal(0, f.HistoryDays);
+        var tomorrow = BreakfastForecast.Build(stays, new BreakfastPolicy(cfg), cfg, new RegistryStore(TempDir()), new UsageStore(TempFile()), today, today.AddDays(1));
+        Assert.Equal(3, tomorrow.EntitledAdults); // завтра: гость A (выезд 15-го) и бронь B (заедет сегодня)
+        Assert.Equal(3, tomorrow.ExpectedAdults);
+    }
+
+    // --- рум-сервис ---
+
+    [Theory]
+    [InlineData(50000, 0, 5000)]
+    [InlineData(40000, 0, 5000)]
+    [InlineData(39999, 2500, 2500)]
+    [InlineData(20000, 2500, 2500)]
+    [InlineData(19999, 5000, 0)]
+    [InlineData(3000, 5000, 0)]
+    public void Room_service_ladder(int check, int guestFee, int hotelComp)
+    {
+        var q = RoomServicePolicy.Quote(check, new PluginConfig());
+        Assert.Equal(guestFee, q.GuestFee);
+        Assert.Equal(hotelComp, q.HotelCompensation);
+        Assert.Equal(5000, q.DeliveryFee);
+        Assert.Equal(check + guestFee, q.TotalToGuest);
+    }
+
+    [Fact]
+    public void Room_service_fee_never_exceeds_delivery_and_defaults_to_full_without_tiers()
+    {
+        var cfg = new PluginConfig { RoomServiceTiers = { } };
+        cfg.RoomServiceTiers.Clear();
+        Assert.Equal(5000, RoomServicePolicy.Quote(100000, cfg).GuestFee);
+        cfg.RoomServiceTiers.Add(new RoomServiceTier { MinCheck = 0, GuestFee = 9999 });
+        Assert.Equal(5000, RoomServicePolicy.Quote(1, cfg).GuestFee);
+    }
+
+    [Fact]
+    public void Room_charges_persist_dedupe_and_export()
+    {
+        var path = TempFile();
+        var s = new RoomChargeStore(path);
+        var c = new RoomCharge { Date = "2026-10-13", Time = "2026-10-13T20:00:00", Kind = RoomCharge.KindRoomService, Room = "101", Guest = "=Х", OrderId = "o1", OrderNumber = 5, Check = 30000, GuestDeliveryFee = 2500, HotelCompensation = 2500, DeliveryEmployee = "Курьер" };
+        s.Add(c);
+        Assert.True(new RoomChargeStore(path).HasActive("o1", RoomCharge.KindRoomService));
+        Assert.Single(s.Pending());
+        Assert.Equal(32500, c.TotalToGuest);
+        s.SetStatus(c.Id, RoomCharge.StatusPosted, "Рецепция", Day);
+        Assert.Empty(s.Pending());
+        s.SetStatus(c.Id, RoomCharge.StatusCancelled, "Рецепция", Day);
+        Assert.False(s.HasActive("o1", RoomCharge.KindRoomService));
+        var csv = RoomChargeStore.ToCsv(s.ForDay(Day));
+        Assert.Contains("32500.00", csv);
+        Assert.Contains("\"'=Х\"", csv);
+    }
+
+    [Fact]
+    public void Kitchen_summary()
+    {
+        var k = new KitchenStore(TempFile());
+        Assert.Contains("не вводила", k.Summary(Day, 10));
+        k.Set(new KitchenEntry { Date = "2026-10-13", Prepared = 50, Leftover = 4, Wasted = 6 });
+        k.Set(new KitchenEntry { Date = "2026-10-13", Prepared = 40, Leftover = 2, Wasted = 2 });
+        Assert.Contains("Приготовлено 40", k.Summary(Day, 36));
+        Assert.Contains("10%", k.Summary(Day, 36));
     }
 
     [Fact]

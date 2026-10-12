@@ -42,6 +42,34 @@ namespace IikoExely
         /// <summary>Комментарий в заказ: шаблон с {room}, {guest}, {kind}.</summary>
         [DataMember(Name = "orderCommentTemplate")] public string OrderCommentTemplate { get; set; } = "Отель: комн. {room}, {guest} ({kind})";
 
+        // --- завтрак: окно, менеджер, отмена ---
+        /// <summary>Начало и конец завтрака (местное время, ЧЧ:ММ): от этого зависят статусы «ожидается / не использован».</summary>
+        [DataMember(Name = "breakfastStart")] public string BreakfastStart { get; set; } = "07:00";
+        [DataMember(Name = "breakfastEnd")] public string BreakfastEnd { get; set; } = "11:00";
+        /// <summary>Код права iikoFront, подтверждаемого менеджером (допуск сверх нормы, отмена). Пусто — подтверждение не требуется.</summary>
+        [DataMember(Name = "managerPermissionCode")] public string ManagerPermissionCode { get; set; } = "";
+        [DataMember(Name = "cancelRequiresManager")] public bool CancelRequiresManager { get; set; } = true;
+
+        // --- прогноз ---
+        [DataMember(Name = "forecastHistoryDays")] public int ForecastHistoryDays { get; set; } = 14;
+        [DataMember(Name = "forecastSlotMinutes")] public int ForecastSlotMinutes { get; set; } = 30;
+
+        // --- рум-сервис ---
+        /// <summary>Полная стоимость доставки; её получает сотрудник (часть платит гость, часть компенсирует отель).</summary>
+        [DataMember(Name = "roomServiceDeliveryFee")] public decimal RoomServiceDeliveryFee { get; set; } = 5000m;
+        /// <summary>Лесенка: чем больше чек, тем меньше платит гость. Берётся самая высокая подходящая ступень.</summary>
+        [DataMember(Name = "roomServiceTiers")]
+        public List<RoomServiceTier> RoomServiceTiers { get; set; } = new List<RoomServiceTier>
+        {
+            new RoomServiceTier { MinCheck = 40000m, GuestFee = 0m },
+            new RoomServiceTier { MinCheck = 20000m, GuestFee = 2500m },
+            new RoomServiceTier { MinCheck = 0m, GuestFee = 5000m },
+        };
+        /// <summary>Позиция меню с открытой ценой для доставки; не должна входить в базу бонусов официантов.</summary>
+        [DataMember(Name = "roomServiceDeliveryProduct")] public string RoomServiceDeliveryProduct { get; set; } = "Доставка рум-сервис";
+        /// <summary>Ценовая категория (отдельное меню) рум-сервиса; при другой категории плагин предупредит.</summary>
+        [DataMember(Name = "roomServicePriceCategory")] public string RoomServicePriceCategory { get; set; } = "Рум-сервис";
+
         public static PluginConfig Load(string path)
         {
             if (!File.Exists(path)) return new PluginConfig();
@@ -55,6 +83,14 @@ namespace IikoExely
             using (var w = JsonReaderWriterFactory.CreateJsonWriter(fs, System.Text.Encoding.UTF8, true, true, "  "))
                 new DataContractJsonSerializer(typeof(PluginConfig)).WriteObject(w, this);
         }
+    }
+
+    [DataContract]
+    public class RoomServiceTier
+    {
+        [DataMember(Name = "minCheck")] public decimal MinCheck { get; set; }
+        /// <summary>Сколько из доставки платит гость при чеке от minCheck.</summary>
+        [DataMember(Name = "guestFee")] public decimal GuestFee { get; set; }
     }
 
     [DataContract]
