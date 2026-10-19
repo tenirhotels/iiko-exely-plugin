@@ -1,0 +1,34 @@
+<resources>
+    <string name="tile_restaurant">Мейрамхана</string>
+    <string name="tile_restaurant_sub">Мәзір және нөмірге тапсырыс</string>
+    <string name="tile_news">Жаңалықтар</string>
+    <string name="tile_news_sub">Қонақүй оқиғалары</string>
+    <string name="tile_apps">Қосымшалар</string>
+    <string name="tile_apps_sub">Барлық қосымшалар</string>
+    <string name="tile_info">Қонақүй туралы</string>
+    <string name="tile_info_sub">Wi-Fi және қызметтер</string>
+    <string name="tile_app_sub">Ашу</string>
+    <string name="offline">Желі жоқ</string>
+    <string name="demo">Демо</string>
+    <string name="restaurant_empty">Мәзір жақында пайда болады</string>
+    <string name="news_empty">Әзірге жаңалық жоқ</string>
+    <string name="apps_empty">Қосымшалар табылмады</string>
+    <string name="launch_failed">%1$s ашылмады</string>
+    <string name="launch_not_installed">%1$s бұл құрылғыда орнатылмаған</string>
+    <string name="section_unavailable">Бөлім әзірге қолжетімсіз</string>
+    <string name="wifi_title">Wi-Fi</string>
+    <string name="wifi_network">Желі</string>
+    <string name="wifi_password">Құпиясөз</string>
+    <string name="reception">Ресепшн</string>
+    <string name="hint_back">Артқа — басты экран</string>
+    <string name="weather_clear">Ашық</string>
+    <string name="weather_partly_cloudy">Ауыспалы бұлтты</string>
+    <string name="weather_cloudy">Бұлтты</string>
+    <string name="weather_fog">Тұман</string>
+    <string name="weather_drizzle">Сіркіреме жаңбыр</string>
+    <string name="weather_rain">Жаңбыр</string>
+    <string name="weather_snow">Қар</string>
+    <string name="weather_storm">Найзағай</string>
+    <string name="home_note">Пульттің бағыттауыштарымен бөлімді таңдап, OK басыңыз</string>
+    <string name="home_note_personal">Демалысыңыз жақсы өтсін. Пульттің бағыттауыштарымен бөлімді таңдап, OK басыңыз</string>
+</resources>

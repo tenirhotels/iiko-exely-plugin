@@ -1,0 +1,10 @@
+<resources>
+    <color name="bg">#FF080B10</color>
+    <color name="surface">#FF141A22</color>
+    <color name="surface_hi">#FF1C2430</color>
+    <color name="gold">#FFC9A96E</color>
+    <color name="text">#FFFFFFFF</color>
+    <color name="text_2">#D9E4E8EF</color>
+    <color name="text_3">#99C7CDD6</color>
+    <color name="line">#33FFFFFF</color>
+</resources>

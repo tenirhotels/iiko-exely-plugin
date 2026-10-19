@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "language": "ru",
+  "languages": ["ru", "en", "kk"],
+  "hotel": {
+    "name": "TENIR",
+    "tagline": {
+      "ru": "Hotel Shymbulak · 3200 м над уровнем моря",
+      "en": "Hotel Shymbulak · 3,200 m above sea level",
+      "kk": "Hotel Shymbulak · теңіз деңгейінен 3200 м"
+    },
+    "logo": null,
+    "background": "asset:///demo/background.jpg",
+    "accentColor": "#C9A96E",
+    "welcome": {
+      "ru": "Добро пожаловать",
+      "en": "Welcome",
+      "kk": "Қош келдіңіз"
+    },
+    "phone": "100",
+    "wifi": { "ssid": "TENIR-Guest", "password": "демо: уточните на рецепции" },
+    "info": {
+      "ru": "Рецепция — круглосуточно, внутренний номер 100.\nЗавтрак — 07:00–11:00, ресторан Tenir.\nВыезд — до 12:00. Поздний выезд — по запросу на рецепции.\nПодъёмник Шымбулак — 09:00–17:00, ски-пассы на рецепции.",
+      "en": "Reception — 24/7, extension 100.\nBreakfast — 07:00–11:00, Tenir restaurant.\nCheck-out — until 12:00. Late check-out on request.\nShymbulak lifts — 09:00–17:00, ski passes at reception.",
+      "kk": "Ресепшн — тәулік бойы, ішкі нөмір 100.\nТаңғы ас — 07:00–11:00, Tenir мейрамханасы.\nШығу — 12:00-ге дейін. Кеш шығу — ресепшнде сұрау бойынша.\nШымбұлақ көтергіші — 09:00–17:00."
+    }
+  },
+  "display": {
+    "showClock": true,
+    "showWeather": true,
+    "showGuestName": true,
+    "guestNameFormat": "first_name",
+    "showRoomNumber": true,
+    "bannerIntervalSeconds": 9,
+    "use24h": true,
+    "timezone": "Asia/Almaty"
+  },
+  "home": {
+    "tiles": ["restaurant", "netflix", "youtube", "news", "apps", "info"]
+  },
+  "banners": [
+    {
+      "id": "sunset",
+      "label": { "ru": "Каждый вечер", "en": "Every evening", "kk": "Әр кеш" },
+      "title": { "ru": "Закат над пиком Талгар", "en": "Sunset over Talgar Peak", "kk": "Талғар шыңындағы күн батуы" },
+      "subtitle": { "ru": "Терраса ресторана открыта до 22:00", "en": "Restaurant terrace open until 22:00", "kk": "Мейрамхана террасасы 22:00-ге дейін" },
+      "image": "asset:///demo/banner-sunset.jpg",
+      "action": { "type": "restaurant" }
+    },
+    {
+      "id": "ski",
+      "label": { "ru": "Сезон 2026/27", "en": "Season 2026/27", "kk": "2026/27 маусымы" },
+      "title": { "ru": "Ски-пассы на рецепции", "en": "Ski passes at reception", "kk": "Ски-пасс ресепшнде" },
+      "subtitle": { "ru": "Без очереди у подъёмника", "en": "Skip the queue at the lift", "kk": "Көтергіште кезексіз" },
+      "image": "asset:///demo/banner-ski.jpg",
+      "action": { "type": "news", "target": "skipass" }
+    },
+    {
+      "id": "spa",
+      "label": { "ru": "Wellness", "en": "Wellness", "kk": "Wellness" },
+      "title": { "ru": "Сауна с видом на горы", "en": "Sauna with mountain views", "kk": "Тау көрінісі бар сауна" },
+      "subtitle": { "ru": "Бронирование по номеру 100", "en": "Book via extension 100", "kk": "100 нөмірі арқылы брондау" },
+      "image": "asset:///demo/banner-spa.jpg",
+      "action": { "type": "news", "target": "sauna" }
+    }
+  ],
+  "news": [
+    {
+      "id": "skipass",
+      "date": "2026-10-15",
+      "title": { "ru": "Ски-пассы без очереди", "en": "Ski passes without queues", "kk": "Кезексіз ски-пасс" },
+      "summary": { "ru": "Оформите ски-пасс на рецепции и сразу идите к подъёмнику.", "en": "Get your ski pass at reception and go straight to the lift.", "kk": "Ски-пассты ресепшнде рәсімдеп, бірден көтергішке барыңыз." },
+      "body": { "ru": "Рецепция оформляет ски-пассы на 1–7 дней для всех проживающих. Прокат снаряжения — на нижнем этаже отеля, с 08:30 до 17:30. Инструкторы — по предварительной записи.", "en": "Reception issues 1–7 day ski passes for all guests. Equipment rental is on the lower floor, 08:30–17:30. Instructors by appointment.", "kk": "Ресепшн барлық қонақтарға 1–7 күндік ски-пасс рәсімдейді. Жабдық жалға беру — төменгі қабатта, 08:30–17:30." },
+      "image": "asset:///demo/banner-ski.jpg"
+    },
+    {
+      "id": "sauna",
+      "date": "2026-10-10",
+      "title": { "ru": "Сауна и купель", "en": "Sauna and plunge pool", "kk": "Сауна және бассейн" },
+      "summary": { "ru": "Финская сауна с панорамным окном. Сеанс — 90 минут.", "en": "Finnish sauna with a panoramic window. 90-minute sessions.", "kk": "Панорамалық терезесі бар фин саунасы. Сеанс — 90 минут." },
+      "body": { "ru": "Сауна работает с 10:00 до 23:00. Запись по внутреннему номеру 100. Полотенца и халаты — в номере.", "en": "The sauna is open 10:00–23:00. Book via extension 100. Towels and robes are in your room.", "kk": "Сауна 10:00–23:00 аралығында жұмыс істейді. 100 нөмірі арқылы жазылыңыз." },
+      "image": "asset:///demo/banner-spa.jpg"
+    },
+    {
+      "id": "altitude",
+      "date": "2026-10-01",
+      "title": { "ru": "Акклиматизация на высоте", "en": "Acclimatisation at altitude", "kk": "Биіктікке бейімделу" },
+      "summary": { "ru": "Пейте больше воды и не спешите в первый день.", "en": "Drink more water and take it easy on day one.", "kk": "Көбірек су ішіңіз, бірінші күні асықпаңыз." },
+      "body": { "ru": "Отель расположен на высоте 3200 м. В первые сутки возможны лёгкая одышка и головная боль. Чай с имбирём и кислородный баллон — бесплатно на рецепции.", "en": "The hotel stands at 3,200 m. Mild shortness of breath or a headache on day one is normal. Ginger tea and oxygen are free at reception.", "kk": "Қонақүй 3200 м биіктікте орналасқан. Ресепшнде зімбір шайы мен оттегі тегін." },
+      "image": "asset:///demo/background.jpg"
+    }
+  ],
+  "restaurant": {
+    "name": { "ru": "Ресторан Tenir", "en": "Tenir Restaurant", "kk": "Tenir мейрамханасы" },
+    "description": { "ru": "Авторская кухня Великого шёлкового пути с видом на ледники", "en": "Silk Road cuisine with glacier views", "kk": "Мұздық көрінісі бар Жібек жолы асханасы" },
+    "hours": { "ru": "Ежедневно 07:00–23:00", "en": "Daily 07:00–23:00", "kk": "Күн сайын 07:00–23:00" },
+    "orderInfo": { "ru": "Заказ в номер — внутренний 100", "en": "Room service — extension 100", "kk": "Нөмірге тапсырыс — ішкі 100" },
+    "image": "asset:///demo/restaurant.jpg",
+    "currency": "₸",
+    "categories": [
+      {
+        "id": "breakfast",
+        "name": { "ru": "Завтраки", "en": "Breakfast", "kk": "Таңғы ас" },
+        "items": [
+          { "id": "syrniki", "name": { "ru": "Сырники со сметаной", "en": "Syrniki with sour cream", "kk": "Қаймақпен сырники" }, "description": { "ru": "Домашний творог, ягодный соус", "en": "Farm cottage cheese, berry sauce" }, "price": 3200, "tags": ["veg"] },
+          { "id": "omelette", "name": { "ru": "Омлет с горными травами", "en": "Mountain herb omelette", "kk": "Тау шөптері қосылған омлет" }, "description": { "ru": "Три яйца, сыр, тосты", "en": "Three eggs, cheese, toast" }, "price": 2900 },
+          { "id": "baursak", "name": { "ru": "Баурсаки с каймаком", "en": "Baursak with kaymak", "kk": "Қаймақпен бауырсақ" }, "description": { "ru": "Подаются с мёдом и чаем", "en": "Served with honey and tea" }, "price": 2400 }
+        ]
+      },
+      {
+        "id": "mains",
+        "name": { "ru": "Основные блюда", "en": "Main courses", "kk": "Негізгі тағамдар" },
+        "items": [
+          { "id": "beshbarmak", "name": { "ru": "Бешбармак", "en": "Beshbarmak", "kk": "Бесбармақ" }, "description": { "ru": "Конина и баранина, домашняя лапша, сорпа", "en": "Horse meat and lamb, hand-cut noodles, sorpa" }, "price": 7900 },
+          { "id": "lagman", "name": { "ru": "Лагман", "en": "Lagman", "kk": "Лағман" }, "description": { "ru": "Тянутая лапша, говядина, овощи", "en": "Pulled noodles, beef, vegetables" }, "price": 5400 },
+          { "id": "trout", "name": { "ru": "Форель на гриле", "en": "Grilled trout", "kk": "Грильдегі бахтах" }, "description": { "ru": "Иссык-кульская форель, печёные овощи", "en": "Issyk-Kul trout, roasted vegetables" }, "price": 8900 },
+          { "id": "plov", "name": { "ru": "Плов", "en": "Plov", "kk": "Палау" }, "description": { "ru": "Баранина, рис девзира, нут", "en": "Lamb, devzira rice, chickpeas" }, "price": 5900 }
+        ]
+      },
+      {
+        "id": "drinks",
+        "name": { "ru": "Напитки", "en": "Drinks", "kk": "Сусындар" },
+        "items": [
+          { "id": "tea", "name": { "ru": "Чай с чабрецом", "en": "Thyme tea", "kk": "Жебір шай" }, "description": { "ru": "Чайник 800 мл", "en": "800 ml pot" }, "price": 1800 },
+          { "id": "sbiten", "name": { "ru": "Глинтвейн безалкогольный", "en": "Alcohol-free mulled wine", "kk": "Алкогольсіз глинтвейн" }, "description": { "ru": "Вишня, специи, цитрус", "en": "Cherry, spices, citrus" }, "price": 2200 },
+          { "id": "kumys", "name": { "ru": "Кумыс", "en": "Kumys", "kk": "Қымыз" }, "description": { "ru": "0,5 л", "en": "0.5 l" }, "price": 1900 }
+        ]
+      }
+    ]
+  },
+  "apps": [
+    { "id": "netflix", "title": "Netflix", "packages": ["com.netflix.ninja", "com.netflix.mediaclient"], "color": "#E50914" },
+    { "id": "youtube", "title": "YouTube", "packages": ["com.google.android.youtube.tv", "com.google.android.youtube.googletv", "com.amazon.firetv.youtube", "com.google.android.youtube"], "color": "#FF0033" }
+  ],
+  "weather": {
+    "latitude": 43.1286,
+    "longitude": 77.0816,
+    "label": { "ru": "Шымбулак", "en": "Shymbulak", "kk": "Шымбұлақ" }
+  },
+  "hub": {
+    "pollSeconds": 60,
+    "maxAgeMinutes": 10,
+    "checkoutHour": 12,
+    "clearAppsOnCheckout": []
+  }
+}
