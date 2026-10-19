@@ -1,0 +1,10 @@
+{
+  "room": "305",
+  "hubUrl": "http://hotelhub.local:8000",
+  "propertyCode": "9305",
+  "hubToken": "ВСТАВЬТЕ_ТОКЕН_ПОТРЕБИТЕЛЯ",
+  "contentUrl": "https://cms.example.kz/tenir/tv/content.json",
+  "demoMode": false,
+  "servicePin": "4826",
+  "language": ""
+}

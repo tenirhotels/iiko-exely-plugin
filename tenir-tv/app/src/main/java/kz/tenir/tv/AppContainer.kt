@@ -186,7 +186,8 @@ class AppContainer(
 
     private fun contentImages(c: HotelContent): List<String?> =
         listOf(c.hotel.backgroundUrl, c.hotel.logoUrl, c.restaurant?.imageUrl) +
-            c.banners.map { it.imageUrl } + c.news.map { it.imageUrl }
+            c.banners.map { it.imageUrl } + c.news.map { it.imageUrl } +
+            c.restaurant?.categories.orEmpty().flatMap { cat -> cat.items.map { it.imageUrl } }
 
     fun refreshWeather() {
         val loc = hotel.weather ?: return
