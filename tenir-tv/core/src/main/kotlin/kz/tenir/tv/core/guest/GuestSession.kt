@@ -122,7 +122,9 @@ class GuestSession(
             source.fetch()
         } catch (e: HubException) {
             status = status.copy(lastError = e.message, lastErrorKind = e.kind)
-            if (e.kind == HubErrorKind.AUTH || e.kind == HubErrorKind.FORBIDDEN) state = GuestState.Unknown
+            if (e.kind == HubErrorKind.AUTH || e.kind == HubErrorKind.FORBIDDEN || e.kind == HubErrorKind.STALE) {
+                state = GuestState.Unknown // данные не подтверждены: скрыть сразу, но это не выезд
+            }
             return visible(now)
         }
         status = SessionStatus(now, null, null, occ.roomFound, occ.status)

@@ -119,6 +119,8 @@ class HomeActivity : BaseTvActivity() {
             renderContent(snap.content)
         }
         subscriptions += app.guest.observe { renderGreeting(it) }
+        subscriptions += app.cloud.observe { renderGreeting(app.guest.value) }
+        subscriptions += app.messages.observe { renderMessage() }
         subscriptions += app.weather.observe { renderWeather(it) }
         subscriptions += app.online.observe { findViewById<View>(R.id.offline).visibility = if (it) View.GONE else View.VISIBLE }
         val filter = IntentFilter().apply {
@@ -137,7 +139,8 @@ class HomeActivity : BaseTvActivity() {
         // вернулись из Netflix/YouTube: приложение могли удалить или обновить
         renderedContent?.let { renderTiles(it) }
         renderGreeting(app.guest.value)
-        findViewById<View>(R.id.demoBadge).visibility = if (app.deviceConfig.config.demoMode) View.VISIBLE else View.GONE
+        val cfg = app.deviceConfig.config
+        findViewById<View>(R.id.demoBadge).visibility = if (cfg.demoMode && !cfg.isCloud) View.VISIBLE else View.GONE
     }
 
     override fun onStop() {
@@ -186,6 +189,12 @@ class HomeActivity : BaseTvActivity() {
         }
         app.images.load(c.hotel.backgroundUrl, findViewById(R.id.background), Ui.placeholder(this))
         findViewById<View>(R.id.clockBlock).visibility = if (c.display.showClock) View.VISIBLE else View.GONE
+        // дизайн из облака: затемнение фона и шрифт заголовков
+        findViewById<View>(R.id.scrimLeft).alpha = (c.display.backgroundDim / 70f).coerceIn(0f, 1f)
+        val headline = android.graphics.Typeface.create(if (c.display.headlineSans) "sans-serif-light" else "serif",
+            android.graphics.Typeface.NORMAL)
+        findViewById<TextView>(R.id.greetingHeadline).typeface = headline
+        findViewById<TextView>(R.id.bannerTitle).typeface = headline
         findViewById<View>(R.id.roomRule).setBackgroundColor(accent)
         findViewById<TextView>(R.id.greetingOverline).setTextColor(accent)
         findViewById<TextView>(R.id.bannerLabel).setTextColor(accent)
@@ -203,7 +212,39 @@ class HomeActivity : BaseTvActivity() {
         }
     }
 
+    /** Облако: приставка ещё не привязана к номеру — вместо приветствия крупно код подключения. */
+    private fun renderPairing(): Boolean {
+        val cs = app.cloud.value
+        if (!cs.enabled || cs.paired) return false
+        findViewById<TextView>(R.id.greetingOverline).setText(R.string.pair_overline)
+        val code = cs.pairingCode
+        findViewById<TextView>(R.id.greetingHeadline).text =
+            if (code != null && code.length == 6) code.substring(0, 3) + " " + code.substring(3) else getString(R.string.pair_wait)
+        findViewById<View>(R.id.roomRow).visibility = View.GONE
+        findViewById<TextView>(R.id.greetingNote).text =
+            getString(R.string.pair_note) + (cs.error?.let { "\n$it" } ?: "")
+        return true
+    }
+
+    private fun renderMessage() {
+        val box = findViewById<TextView>(R.id.messageBox)
+        val m = app.messages.value.firstOrNull()
+        if (m == null) {
+            box.visibility = View.GONE
+            return
+        }
+        box.text = t(m.text)
+        box.background = Ui.rounded(Ui.withAlpha(0xFF141A22.toInt(), 0.85f), Ui.dp(this, 10f).toFloat(), Ui.dp(this, 1.5f), accent)
+        val icon = getDrawable(R.drawable.ic_info)?.mutate()
+        icon?.setTint(accent)
+        val sz = Ui.dp(this, 20f)
+        icon?.setBounds(0, 0, sz, sz)
+        box.setCompoundDrawablesRelative(icon, null, null, null)
+        box.visibility = View.VISIBLE
+    }
+
     private fun renderGreeting(state: GuestState) {
+        if (renderPairing()) return
         val c = app.hotel
         val hour = Calendar.getInstance(app.timeZone).get(Calendar.HOUR_OF_DAY)
         val g = Greetings.build(

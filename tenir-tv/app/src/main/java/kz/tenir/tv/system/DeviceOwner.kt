@@ -53,6 +53,18 @@ object DeviceOwner {
         }
     }
 
+    /** Перезагрузка приставки по команде облака (только владелец устройства). */
+    fun reboot(context: Context): Boolean {
+        if (!isDeviceOwner(context)) return false
+        return try {
+            dpm(context).reboot(admin(context))
+            true
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "перезагрузка не удалась", e)
+            false
+        }
+    }
+
     /**
      * Очистка данных приложений предыдущего гостя (вход в Netflix, YouTube и т. п.).
      * Android 9+ и права владельца устройства; иначе возвращает причину отказа.

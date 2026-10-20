@@ -25,4 +25,5 @@
     <string translatable="false" name="service_diag">Диагностика приставки</string>
     <string translatable="false" name="service_events">Журнал</string>
     <string translatable="false" name="enter">OK</string>
+    <string translatable="false" name="service_cloud_url">Адрес TENIR TV Cloud (https://tv.tenir.kz). Задан — хаб и контент берутся из облака</string>
 </resources>

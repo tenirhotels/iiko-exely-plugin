@@ -31,4 +31,7 @@
     <string name="weather_storm">Найзағай</string>
     <string name="home_note">Пульттің бағыттауыштарымен бөлімді таңдап, OK басыңыз</string>
     <string name="home_note_personal">Демалысыңыз жақсы өтсін. Пульттің бағыттауыштарымен бөлімді таңдап, OK басыңыз</string>
+    <string name="pair_overline">TENIR TV Cloud-қа қосылу</string>
+    <string name="pair_note">TENIR TV Cloud → «Приставкалар» бөліміне осы кодты енгізіңіз</string>
+    <string name="pair_wait">TENIR TV Cloud-пен байланыс…</string>
 </resources>

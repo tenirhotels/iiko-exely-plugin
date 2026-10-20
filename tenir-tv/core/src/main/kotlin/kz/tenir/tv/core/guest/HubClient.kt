@@ -7,7 +7,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 
-enum class HubErrorKind { NETWORK, AUTH, FORBIDDEN, NOT_FOUND, RATE_LIMIT, SERVER, BAD_DATA }
+/** STALE — источник ответил, но подтверждённых данных о госте нет (облако не получает ответ хаба). */
+enum class HubErrorKind { NETWORK, AUTH, FORBIDDEN, NOT_FOUND, RATE_LIMIT, SERVER, BAD_DATA, STALE }
 
 class HubException(val kind: HubErrorKind, message: String) : Exception(message)
 

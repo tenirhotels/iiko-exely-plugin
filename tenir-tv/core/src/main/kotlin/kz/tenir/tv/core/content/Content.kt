@@ -74,6 +74,10 @@ data class DisplaySettings(
     val bannerIntervalSeconds: Int = 9,
     val use24h: Boolean = true,
     val timezone: String = "Asia/Almaty",
+    /** Заголовки без засечек (по умолчанию — с засечками). */
+    val headlineSans: Boolean = false,
+    /** Затемнение фона главного экрана, 0–100 (70 — как в макете). */
+    val backgroundDim: Int = 70,
 )
 
 enum class ActionType { NONE, NEWS, RESTAURANT, APP, APPS, INFO;

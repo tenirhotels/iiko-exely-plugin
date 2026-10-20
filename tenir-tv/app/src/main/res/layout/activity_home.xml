@@ -13,6 +13,7 @@
         android:scaleType="centerCrop" />
 
     <View
+        android:id="@+id/scrimLeft"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/scrim_left" />
@@ -250,6 +251,22 @@
                     android:layout_marginTop="18dp"
                     android:maxLines="3"
                     android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/messageBox"
+                    style="@style/Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:drawablePadding="10dp"
+                    android:gravity="center_vertical"
+                    android:maxLines="4"
+                    android:paddingLeft="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingRight="14dp"
+                    android:paddingBottom="10dp"
+                    android:textSize="15sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <FrameLayout

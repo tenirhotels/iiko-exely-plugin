@@ -78,6 +78,8 @@ object ContentParser {
             bannerIntervalSeconds = o.optInt("bannerIntervalSeconds", d.bannerIntervalSeconds).coerceIn(3, 120),
             use24h = o.optBoolean("use24h", d.use24h),
             timezone = o.str("timezone") ?: d.timezone,
+            headlineSans = o.str("headlineFont") == "sans",
+            backgroundDim = o.optInt("backgroundDim", d.backgroundDim).coerceIn(0, 100),
         )
     }
 

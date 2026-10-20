@@ -19,21 +19,34 @@ class AndroidHttpTransport(
     private val maxBodyBytes: Int = 4 * 1024 * 1024,
 ) : HttpTransport {
 
-    override fun get(url: String, headers: Map<String, String>): HttpResult {
+    override fun get(url: String, headers: Map<String, String>): HttpResult = send("GET", url, null, headers)
+
+    override fun post(url: String, json: String, headers: Map<String, String>): HttpResult =
+        send("POST", url, json, headers)
+
+    private fun send(method: String, url: String, body: String?, headers: Map<String, String>): HttpResult {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
+            conn.requestMethod = method
             conn.connectTimeout = connectTimeoutMs
             conn.readTimeout = readTimeoutMs
             conn.instanceFollowRedirects = true
             conn.useCaches = false
             conn.setRequestProperty("User-Agent", userAgent)
             headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            if (body != null) {
+                val bytes = body.toByteArray(Charsets.UTF_8)
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.setFixedLengthStreamingMode(bytes.size)
+                conn.outputStream.use { it.write(bytes) }
+            }
             val code = conn.responseCode
             val stream = if (code >= 400) conn.errorStream else conn.inputStream
-            val body = stream?.use { readLimited(it, maxBodyBytes) }?.toString(Charsets.UTF_8)
+            val text = stream?.use { readLimited(it, maxBodyBytes) }?.toString(Charsets.UTF_8)
             val out = HashMap<String, String>()
             conn.headerFields?.forEach { (k, v) -> if (k != null && !v.isNullOrEmpty()) out[k] = v[0] }
-            return HttpResult(code, body, out)
+            return HttpResult(code, text, out)
         } catch (e: IOException) {
             throw e
         } catch (e: RuntimeException) {

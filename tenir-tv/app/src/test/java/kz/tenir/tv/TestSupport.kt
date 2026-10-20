@@ -25,6 +25,9 @@ import java.time.Duration
 /** Подменная сеть: погода и Hotel Hub отвечают заготовками, остальное недоступно. */
 object FakeNet : HttpTransport {
     @Volatile var hubDown = false
+    /** Ответ облака на heartbeat (null — облако не отвечает). */
+    @Volatile var cloudHeartbeat: String? = """{"paired": false, "pairing_code": "715685", "content": {"version": 0}}"""
+    val acks = ArrayList<String>()
     @Volatile var rooms = """{"rooms": []}"""
     val guests = HashMap<String, String>()
     val requests = ArrayList<String>()
@@ -34,6 +37,8 @@ object FakeNet : HttpTransport {
         rooms = """{"rooms": []}"""
         guests.clear()
         synchronized(requests) { requests.clear() }
+        cloudHeartbeat = """{"paired": false, "pairing_code": "715685", "content": {"version": 0}}"""
+        synchronized(acks) { acks.clear() }
     }
 
     override fun get(url: String, headers: Map<String, String>): HttpResult {
@@ -51,6 +56,23 @@ object FakeNet : HttpTransport {
                     }
                     else -> HttpResult(404, """{"error": "нет"}""")
                 }
+            }
+            url.startsWith("http://cloud.test/api/tv/v1/content") ->
+                HttpResult(200, """{"version": 5, "hotel": {"name": "TENIR Cloud"}}""", mapOf("ETag" to "\"v5\""))
+            else -> throw IOException("нет сети в тесте: $url")
+        }
+    }
+
+    override fun post(url: String, json: String, headers: Map<String, String>): HttpResult {
+        synchronized(requests) { requests += "POST $url" }
+        return when {
+            url == "http://cloud.test/api/tv/v1/register" ->
+                HttpResult(201, """{"device_id": "d1", "device_key": "k1", "pairing_code": "715685"}""")
+            url == "http://cloud.test/api/tv/v1/heartbeat" ->
+                cloudHeartbeat?.let { HttpResult(200, it) } ?: throw IOException("облако недоступно")
+            url.startsWith("http://cloud.test/api/tv/v1/commands/") -> {
+                synchronized(acks) { acks += url.substringAfter("/commands/").substringBefore("/ack") + " " + json }
+                HttpResult(200, """{"ok": true}""")
             }
             else -> throw IOException("нет сети в тесте: $url")
         }

@@ -50,6 +50,10 @@
                     android:layout_height="wrap_content" android:layout_marginTop="6dp" />
 
                 <TextView style="@style/Text.Caption" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp" android:text="@string/service_cloud_url" />
+                <EditText android:id="@+id/f_cloudUrl" style="@style/ServiceField" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" android:inputType="textUri" />
+                <TextView style="@style/Text.Caption" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:layout_marginTop="12dp" android:text="@string/service_room" />
                 <EditText android:id="@+id/f_room" style="@style/ServiceField" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:layout_marginTop="4dp" android:inputType="text" />

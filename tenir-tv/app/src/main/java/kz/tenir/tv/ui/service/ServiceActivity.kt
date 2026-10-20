@@ -98,6 +98,7 @@ class ServiceActivity : BaseTvActivity() {
     private fun field(id: Int) = findViewById<EditText>(id)
 
     private fun fill(c: DeviceConfig) {
+        field(R.id.f_cloudUrl).setText(c.cloudUrl)
         field(R.id.f_room).setText(c.room)
         field(R.id.f_hubUrl).setText(c.hubUrl)
         field(R.id.f_propertyCode).setText(c.propertyCode)
@@ -113,6 +114,7 @@ class ServiceActivity : BaseTvActivity() {
         fun v(id: Int) = field(id).text.toString().trim()
         return DeviceConfig(
             room = v(R.id.f_room),
+            cloudUrl = v(R.id.f_cloudUrl),
             hubUrl = v(R.id.f_hubUrl),
             propertyCode = v(R.id.f_propertyCode),
             hubToken = v(R.id.f_hubToken),
@@ -188,7 +190,18 @@ class ServiceActivity : BaseTvActivity() {
         }
         val text = buildString {
             appendLine("[${getString(R.string.service_status)}]")
-            appendLine("Режим: ${if (c.demoMode) "демо-гость" else if (c.isHubReady) "Hotel Hub" else "хаб не настроен"}")
+            appendLine("Режим: ${when {
+                c.isCloud -> "TENIR TV Cloud (${c.cloudUrl})"
+                c.demoMode -> "демо-гость"
+                c.isHubReady -> "Hotel Hub"
+                else -> "хаб не настроен"
+            }}")
+            if (c.isCloud) {
+                val cs = app.cloud.value
+                appendLine("Облако: ${if (cs.paired) "подключена, номер ${cs.room ?: "—"} (${cs.propertyName ?: ""})" else "ждёт подключения, код ${cs.pairingCode ?: "—"}"}" +
+                    ", последний сеанс ${if (cs.lastOkMillis > 0) fmt.format(Date(cs.lastOkMillis)) else "—"}" +
+                    (cs.error?.let { ", ошибка: $it" } ?: ""))
+            }
             appendLine("Номер: ${c.room.ifEmpty { "—" }}, хаб: ${c.hubUrl.ifEmpty { "—" }}, отель: ${c.propertyCode.ifEmpty { "—" }}")
             appendLine("Токен: ${if (c.hubToken.isEmpty()) "—" else "•••• ${c.hubToken.takeLast(4)}"}")
             appendLine("Гость: $guest")

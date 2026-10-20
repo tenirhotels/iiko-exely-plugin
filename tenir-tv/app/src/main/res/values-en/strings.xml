@@ -31,4 +31,7 @@
     <string name="weather_storm">Thunderstorm</string>
     <string name="home_note">Use the arrows on your remote to choose a section and press OK</string>
     <string name="home_note_personal">Enjoy your stay. Use the arrows on your remote to choose a section and press OK</string>
+    <string name="pair_overline">Connect to TENIR TV Cloud</string>
+    <string name="pair_note">Open TENIR TV Cloud → Devices and enter this code</string>
+    <string name="pair_wait">Connecting to TENIR TV Cloud…</string>
 </resources>

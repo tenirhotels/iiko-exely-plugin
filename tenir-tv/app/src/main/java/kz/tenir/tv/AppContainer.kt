@@ -1,6 +1,9 @@
 package kz.tenir.tv
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
@@ -10,7 +13,13 @@ import android.util.Log
 import kz.tenir.tv.core.DeviceConfig
 import kz.tenir.tv.core.apps.AppResolver
 import kz.tenir.tv.core.apps.ResolvedApp
+import kz.tenir.tv.core.cloud.CloudClient
+import kz.tenir.tv.core.cloud.CloudCommand
+import kz.tenir.tv.core.cloud.CloudMessage
+import kz.tenir.tv.core.cloud.CloudOccupancySource
+import kz.tenir.tv.core.cloud.Heartbeat
 import kz.tenir.tv.core.content.ContentRepository
+import kz.tenir.tv.core.content.ContentSource
 import kz.tenir.tv.core.content.ContentSnapshot
 import kz.tenir.tv.core.content.HotelContent
 import kz.tenir.tv.core.content.RefreshResult
@@ -32,6 +41,8 @@ import kz.tenir.tv.data.FileTextStore
 import kz.tenir.tv.image.ImageLoader
 import kz.tenir.tv.system.DeviceOwner
 import kz.tenir.tv.system.Diagnostics
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,11 +61,10 @@ class Observable<T>(initial: T) {
     var value: T = initial
         private set
 
+    /** Значение доступно сразу (в том числе фоновым потокам), подписчики узнают о нём в главном потоке. */
     fun post(v: T) {
-        main.post {
-            value = v
-            listeners.toList().forEach { it(v) }
-        }
+        value = v
+        main.post { listeners.toList().forEach { it(v) } }
     }
 
     /** Сразу отдаёт текущее значение. Вернуть результат и вызвать в onStop. */
@@ -64,6 +74,17 @@ class Observable<T>(initial: T) {
         return { listeners -= listener }
     }
 }
+
+/** Состояние связи с TENIR TV Cloud для экрана и сервисного меню. */
+data class CloudState(
+    val enabled: Boolean = false,
+    val paired: Boolean = false,
+    val pairingCode: String? = null,
+    val room: String? = null,
+    val propertyName: String? = null,
+    val lastOkMillis: Long = 0,
+    val error: String? = null,
+)
 
 /**
  * Ручная сборка зависимостей и фоновая работа. Сетевые запросы — только в пуле [bg],
@@ -98,6 +119,18 @@ class AppContainer(
     val weather = Observable<Weather?>(weatherRepo.cached())
     val guest = Observable<GuestState>(GuestState.Unknown)
     val online = Observable(Diagnostics.isOnline(context))
+    val cloud = Observable(CloudState(enabled = deviceConfig.config.isCloud))
+    val messages = Observable<List<CloudMessage>>(emptyList())
+
+    /** Текущий экран для облака: home, restaurant, … или external (открыто другое приложение). */
+    @Volatile
+    var screen: String = "home"
+
+    @Volatile
+    private var cloudClient: CloudClient? = null
+
+    @Volatile
+    private var cloudPollSeconds: Int? = null
 
     @Volatile
     private var session: GuestSession = buildSession()
@@ -131,7 +164,16 @@ class AppContainer(
 
     private fun buildSession(): GuestSession {
         val c = deviceConfig.config
+        cloudClient = if (c.isCloud) CloudClient(http, c.cloudUrl, store) else null
+        cloud.post(CloudState(enabled = c.isCloud))
+        val client = cloudClient
         val source: OccupancySource? = when {
+            client != null -> CloudOccupancySource(
+                client,
+                { Triple(statusForCloud(), hotel.version, screen) },
+                { Triple("${Build.MANUFACTURER} ${Build.MODEL}".trim(), Build.VERSION.RELEASE, version) },
+                ::onHeartbeat,
+            )
             c.demoMode -> DemoOccupancySource(c.room.ifBlank { "305" })
             c.isHubReady -> HubOccupancySource(HubClient(http, c.hubConnection!!), c.room)
             else -> null
@@ -150,11 +192,16 @@ class AppContainer(
     private fun scheduleHub(delaySec: Long) {
         hubTask?.cancel(false)
         hubTask = bg.schedule(Runnable {
-            var next = hotel.hub.pollSeconds.toLong()
+            var next = (cloudPollSeconds ?: hotel.hub.pollSeconds).toLong()
             safe("hub") {
                 val s = session
                 s.settings = hotel.hub
                 guest.post(s.poll())
+                if (cloudClient != null) {
+                    val st = s.status
+                    val err = if (st.lastErrorKind == HubErrorKind.STALE) null else st.lastError
+                    cloud.post(cloud.value.copy(error = err))
+                }
                 val err = s.status.lastErrorKind
                 hubBackoff = if (err == HubErrorKind.RATE_LIMIT || err == HubErrorKind.NETWORK) {
                     (hubBackoff * 2).coerceAtMost(8)
@@ -168,7 +215,14 @@ class AppContainer(
     }
 
     fun refreshContent() {
-        when (val r = contentRepo.refresh(deviceConfig.config.contentUrl)) {
+        val client = cloudClient
+        val r = if (client != null) {
+            if (client.key == null) return // ещё не зарегистрирована: контент придёт после первого heartbeat
+            contentRepo.refresh(client.contentUrl, client.authHeaders())
+        } else {
+            contentRepo.refresh(deviceConfig.config.contentUrl)
+        }
+        when (r) {
             is RefreshResult.Updated -> {
                 applyContent(r.snapshot)
                 event("Контент обновлён: версия ${r.snapshot.content.version}")
@@ -188,6 +242,78 @@ class AppContainer(
         listOf(c.hotel.backgroundUrl, c.hotel.logoUrl, c.restaurant?.imageUrl) +
             c.banners.map { it.imageUrl } + c.news.map { it.imageUrl } +
             c.restaurant?.categories.orEmpty().flatMap { cat -> cat.items.map { it.imageUrl } }
+
+    // --- TENIR TV Cloud ---
+
+    private fun statusForCloud(): JSONObject {
+        val o = Diagnostics.status(context, version)
+        o.put("personal", guest.value is GuestState.Present)
+        val errors = JSONArray()
+        events().filter { "ошибка" in it || "не обновлён" in it || "Запуск" in it }.take(5).forEach { errors.put(it) }
+        o.put("errors", errors)
+        return o
+    }
+
+    /** Вызывается из фонового потока после каждого успешного heartbeat. */
+    private fun onHeartbeat(hb: Heartbeat) {
+        cloudPollSeconds = hb.pollSeconds?.coerceIn(15, 3600)
+        cloud.post(CloudState(true, hb.paired, hb.pairingCode, hb.room, hb.propertyName, System.currentTimeMillis()))
+        val c = deviceConfig.config
+        val pin = hb.servicePin ?: c.servicePin
+        val lang = hb.language ?: c.language
+        if (pin != c.servicePin || lang != c.language) deviceConfig.save(c.copy(servicePin = pin, language = lang))
+        messages.post(hb.messages)
+        if (hb.contentVersion != hotel.version || content.value.source == ContentSource.BUNDLED && hb.paired) {
+            bg.execute { safe("content") { refreshContent() } }
+        }
+        hb.commands.forEach { cmd -> bg.execute { safe("command") { runCommand(cmd) } } }
+    }
+
+    private fun runCommand(cmd: CloudCommand) {
+        val client = cloudClient ?: return
+        event("Команда облака: ${cmd.kind}")
+        val (ok, result) = when (cmd.kind) {
+            "refresh" -> {
+                refreshAll()
+                true to "данные обновляются"
+            }
+            "reload_content" -> {
+                resetContentCache()
+                refreshContent()
+                true to "кеш сброшен, контент v${hotel.version}"
+            }
+            "clear_apps" -> {
+                val pkgs = hotel.hub.clearAppsOnCheckout
+                when {
+                    pkgs.isEmpty() -> false to "в контенте не задан список hub.clearAppsOnCheckout"
+                    !DeviceOwner.isDeviceOwner(context) -> false to "TENIR TV не владелец устройства"
+                    Build.VERSION.SDK_INT < 28 -> false to "нужен Android 9+"
+                    else -> {
+                        DeviceOwner.clearAppData(context, pkgs) { event(it) }
+                        true to "очистка запрошена: ${pkgs.joinToString()}"
+                    }
+                }
+            }
+            "reboot" -> if (DeviceOwner.reboot(context)) true to "перезагрузка" else false to "нужен режим владельца устройства"
+            "restart_app" -> {
+                client.ack(cmd.id, true, "перезапуск")
+                main.postDelayed({ restartProcess() }, 500)
+                return
+            }
+            else -> false to "неизвестная команда ${cmd.kind}"
+        }
+        client.ack(cmd.id, ok, result)
+    }
+
+    private fun restartProcess() {
+        // TENIR TV — домашний экран: после завершения процесса система сама снова откроет главный экран
+        val intent = Intent(context, kz.tenir.tv.ui.home.HomeActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        val pi = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_IMMUTABLE)
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager)
+            .set(AlarmManager.RTC, System.currentTimeMillis() + 1000, pi)
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
 
     fun refreshWeather() {
         val loc = hotel.weather ?: return

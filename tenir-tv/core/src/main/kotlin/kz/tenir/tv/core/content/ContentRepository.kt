@@ -52,9 +52,9 @@ class ContentRepository(
     }
 
     /** Блокирующий вызов: только из фонового потока. */
-    fun refresh(url: String?): RefreshResult {
+    fun refresh(url: String?, extraHeaders: Map<String, String> = emptyMap()): RefreshResult {
         if (url.isNullOrBlank()) return RefreshResult.NotConfigured
-        val headers = HashMap<String, String>()
+        val headers = HashMap(extraHeaders)
         if (store.read(KEY_BODY) != null && store.read(KEY_URL) == url) {
             store.read(KEY_ETAG)?.let { headers["If-None-Match"] = it }
         }

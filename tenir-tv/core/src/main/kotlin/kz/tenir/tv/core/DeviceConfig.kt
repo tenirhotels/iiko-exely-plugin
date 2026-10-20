@@ -20,7 +20,11 @@ data class DeviceConfig(
     val servicePin: String = DEFAULT_PIN,
     /** Пусто — язык из контента. */
     val language: String = "",
+    /** Адрес TENIR TV Cloud. Задан — приставка управляется облаком (гость, контент, настройки оттуда). */
+    val cloudUrl: String = "",
 ) {
+    val isCloud: Boolean get() = cloudUrl.isNotBlank()
+
     val hubConnection: HubConnection?
         get() = if (hubUrl.isNotBlank() && propertyCode.isNotBlank() && hubToken.isNotBlank()) {
             HubConnection(hubUrl.trim(), propertyCode.trim(), hubToken.trim())
@@ -33,7 +37,7 @@ data class DeviceConfig(
     fun toJson(): String = JSONObject()
         .put("room", room).put("hubUrl", hubUrl).put("propertyCode", propertyCode).put("hubToken", hubToken)
         .put("contentUrl", contentUrl).put("demoMode", demoMode).put("servicePin", servicePin)
-        .put("language", language)
+        .put("language", language).put("cloudUrl", cloudUrl)
         .toString(2)
 
     companion object {
@@ -56,6 +60,7 @@ data class DeviceConfig(
                 demoMode = if (o.has("demoMode")) o.optBoolean("demoMode", base.demoMode) else base.demoMode,
                 servicePin = s("servicePin", base.servicePin),
                 language = s("language", base.language),
+                cloudUrl = s("cloudUrl", base.cloudUrl),
             )
         }
     }

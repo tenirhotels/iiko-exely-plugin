@@ -31,4 +31,7 @@
     <string name="weather_storm">Гроза</string>
     <string name="home_note">Выберите раздел стрелками пульта и нажмите OK</string>
     <string name="home_note_personal">Желаем приятного отдыха. Выберите раздел стрелками пульта и нажмите OK</string>
+    <string name="pair_overline">Подключение к TENIR TV Cloud</string>
+    <string name="pair_note">Откройте панель TENIR TV Cloud → «Приставки» и введите этот код</string>
+    <string name="pair_wait">Связь с TENIR TV Cloud…</string>
 </resources>

@@ -12,6 +12,7 @@ import android.util.DisplayMetrics
 import android.view.Display
 import android.view.WindowManager
 import kz.tenir.tv.core.apps.Scaling
+import org.json.JSONObject
 
 /**
  * Проверка совместимости приставки: сеть (Ethernet/Wi-Fi), режимы экрана и HDR,
@@ -37,6 +38,55 @@ object Diagnostics {
         appendLine("Владелец устройства: ${if (DeviceOwner.isDeviceOwner(context)) "да" else "нет"}")
         appendLine("Право «поверх окон» (автозапуск на Android 10+): ${if (Settings.canDrawOverlays(context)) "да" else "нет"}")
     }
+
+    /** Состояние для облака (heartbeat): то же, что в отчёте, но структурой. Кодеки считаются один раз. */
+    fun status(context: Context, appVersion: String): JSONObject {
+        val o = JSONObject()
+        o.put("app_version", appVersion).put("model", "${Build.MANUFACTURER} ${Build.MODEL}".trim())
+            .put("android", Build.VERSION.RELEASE).put("api", Build.VERSION.SDK_INT)
+            .put("uptime_min", android.os.SystemClock.elapsedRealtime() / 60_000)
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val mem = ActivityManager.MemoryInfo().also(am::getMemoryInfo)
+        o.put("memory", JSONObject().put("total_mb", mem.totalMem / (1024 * 1024)).put("avail_mb", mem.availMem / (1024 * 1024)))
+        val net = JSONObject()
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.activeNetwork?.let(cm::getNetworkCapabilities)?.let { caps ->
+            net.put("type", when {
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+                else -> "other"
+            })
+            net.put("internet", caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+            if (Build.VERSION.SDK_INT >= 29 && caps.signalStrength != Int.MIN_VALUE) net.put("wifi_rssi", caps.signalStrength)
+        }
+        o.put("network", net)
+        @Suppress("DEPRECATION")
+        val d = (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        val mode = d.mode
+        val hdr = org.json.JSONArray()
+        d.hdrCapabilities?.supportedHdrTypes?.forEach {
+            hdr.put(when (it) {
+                Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION -> "Dolby Vision"
+                Display.HdrCapabilities.HDR_TYPE_HDR10 -> "HDR10"
+                Display.HdrCapabilities.HDR_TYPE_HLG -> "HLG"
+                4 -> "HDR10+"
+                else -> "тип $it"
+            })
+        }
+        o.put("display", JSONObject().put("width", mode.physicalWidth).put("height", mode.physicalHeight)
+            .put("refresh", Math.round(mode.refreshRate)).put("uhd", d.supportedModes.any { it.physicalWidth >= 3840 })
+            .put("hdr", hdr))
+        val codecs = JSONObject()
+        cachedCodecs.forEach { line -> line.split(": ", limit = 2).let { if (it.size == 2) codecs.put(it[0], it[1]) } }
+        o.put("codecs", codecs)
+        o.put("default_home", BootReceiver.isDefaultHome(context))
+            .put("device_owner", DeviceOwner.isDeviceOwner(context))
+            .put("overlay", Settings.canDrawOverlays(context))
+        return o
+    }
+
+    private val cachedCodecs: List<String> by lazy { codecs() }
 
     fun network(context: Context): String {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

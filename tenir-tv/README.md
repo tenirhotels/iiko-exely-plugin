@@ -6,7 +6,16 @@
 
 Аудит исходного проекта LauncherCompose и обоснование выбранной реализации — [docs/audit.md](docs/audit.md).
 Интеграция с Hotel Hub — [docs/hotel-hub.md](docs/hotel-hub.md). Формат серверного контента — [docs/content-format.md](docs/content-format.md).
-ТЗ на сервис управления телевизорами (учёт приставок, дизайн, контент, гости) — [docs/backend.md](docs/backend.md).
+Сервис управления телевизорами **TENIR TV Cloud** (учёт приставок, дизайн, контент, гости) — [server/](server/README.md),
+ТЗ — [docs/backend.md](docs/backend.md).
+
+Три режима работы приставки (сервисное меню или `device.json`):
+
+| Режим | Как включить | Откуда гость и контент |
+|---|---|---|
+| **Облако** (рекомендуется) | `cloudUrl` | TENIR TV Cloud: подключение по коду, гость своего номера, контент и дизайн из панели, сообщения, команды |
+| Hotel Hub напрямую | `hubUrl`, `propertyCode`, `hubToken`, `room`, `contentUrl`; `demoMode: false` | хаб и статический `content.json` |
+| Демо | по умолчанию | встроенный демо-гость и контент |
 
 ![Главный экран, Full HD](docs/screenshots/home-1080p.jpg)
 
@@ -49,8 +58,9 @@ tenir-tv/
   app/    Android-приложение (framework Views, без AndroidX): экраны ui/*, AppContainer (зависимости и фоновые
           опросы), data/* (HTTP, хранилища, запуск приложений), image/ImageLoader, system/* (автозапуск,
           владелец устройства, диагностика); Robolectric-тесты в app/src/test
+  server/ TENIR TV Cloud (Python, FastAPI): API приставок, панель администратора, опрос Hotel Hub; pytest
   tools/  build-offline.sh — сборка APK без Google Maven; gen_demo_assets.py — демо-изображения
-  docs/   аудит, интеграция, формат контента, пример device.json, снимки экранов
+  docs/   аудит, интеграция, формат контента, ТЗ backend, пример device.json, снимки экранов
 ```
 
 Сетевые запросы — только в фоновых потоках (`AppContainer`, пул `ImageLoader`), главный поток получает готовые
@@ -83,19 +93,24 @@ tools/build-offline.sh          # → dist/tenir-tv-0.1.0.apk
 Для эксплуатации подпишите APK постоянным ключом отеля: обновление поверх установленной версии возможно только
 тем же ключом.
 
-### Результаты сборки и тестов (20.10.2026)
+### Результаты сборки и тестов (20.10.2026, версия 0.2.0)
 
 Gradle 8.9, AGP 8.5.2, Kotlin 2.0.21, Android SDK 34, JDK 21:
 
 | Проверка | Результат |
 |---|---|
-| `./gradlew :core:test` | 28 тестов, 0 ошибок |
-| `./gradlew :app:testDebugUnitTest` (Robolectric 4.14.1, нативная графика) | 14 тестов, 0 ошибок; снимки 720p, 1080p и 3840×2160 — `docs/screenshots` |
+| `./gradlew :core:test` | 35 тестов, 0 ошибок (+1 сквозной с настоящим сервисом: `TENIR_CLOUD_E2E_URL=…`, пройден) |
+| `./gradlew :app:testDebugUnitTest` (Robolectric 4.14.1, нативная графика) | 16 тестов, 0 ошибок; снимки 720p, 1080p, 3840×2160 и облачного режима — `docs/screenshots` |
+| `server: pytest` | 15 тестов, 0 ошибок; `ruff` — без замечаний |
 | `./gradlew :app:lintRelease` | 0 ошибок; предупреждения — в основном поля сервисного меню без автозаполнения |
 | `./gradlew :app:assembleRelease` | `app-release.apk`, ~0,9 МБ (R8), minSdk 24, targetSdk 34, подпись отладочным ключом |
-| `tools/build-offline.sh` | `dist/tenir-tv-0.1.0.apk`, ~1 МБ — запасная сборка без Google Maven |
+| `tools/build-offline.sh` | `dist/tenir-tv-0.2.0.apk`, ~1 МБ — запасная сборка без Google Maven |
 
 ## Установка на Android TV Box
+
+**С облаком:** развернуть TENIR TV Cloud ([server/README.md](server/README.md)), в нём указать хаб и токен;
+на приставке — только `"cloudUrl"` в `device.json` (или поле в сервисном меню), затем ввести код с экрана в панели.
+Шаги 1–2 ниже тогда не нужны.
 
 1. **Hotel Hub:** страница «API» → новый потребитель «TENIR TV», права `occupancy` и `guests`, скопировать токен.
 2. **Контент:** опубликовать `content.json` (пример — `app/src/main/assets/content-demo.json`) на HTTPS-сервере.
@@ -103,7 +118,7 @@ Gradle 8.9, AGP 8.5.2, Kotlin 2.0.21, Android SDK 34, JDK 21:
 
 ```bash
 adb connect 192.168.1.50:5555
-adb install -r tenir-tv-0.1.0.apk
+adb install -r tenir-tv-0.2.0.apk
 
 # настройки номера: файл применяется при запуске и удаляется (токен не остаётся в общей памяти)
 adb shell mkdir -p /sdcard/Android/data/kz.tenir.tv/files

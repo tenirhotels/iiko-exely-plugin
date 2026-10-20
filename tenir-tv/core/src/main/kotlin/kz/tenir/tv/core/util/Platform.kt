@@ -8,6 +8,11 @@ import java.util.TimeZone
 interface HttpTransport {
     @Throws(IOException::class)
     fun get(url: String, headers: Map<String, String> = emptyMap()): HttpResult
+
+    /** POST с телом JSON (облако TENIR TV Cloud). */
+    @Throws(IOException::class)
+    fun post(url: String, json: String, headers: Map<String, String> = emptyMap()): HttpResult =
+        throw IOException("POST не поддерживается этим транспортом")
 }
 
 class HttpResult(val code: Int, val body: String?, headers: Map<String, String> = emptyMap()) {
