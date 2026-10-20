@@ -6,12 +6,34 @@ import os
 import sys
 
 
+def _lan_addresses() -> list[str]:
+    import socket
+
+    out = []
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            if not ip.startswith("127.") and ip not in out:
+                out.append(ip)
+    except OSError:
+        pass
+    try:  # адрес «по умолчанию»: интерфейс, которым уходит трафик в локальную сеть
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("10.255.255.255", 1))
+            ip = sock.getsockname()[0]
+            if ip not in out and not ip.startswith("127."):
+                out.insert(0, ip)
+    except OSError:
+        pass
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="tenircloud", description="TENIR TV Cloud")
     ap.add_argument("--data", default=os.environ.get("TENIR_CLOUD_DATA", "data"), help="каталог данных")
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("serve", help="запустить сервис")
-    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--host", default="0.0.0.0", help="по умолчанию — вся локальная сеть (приставки должны достучаться)")
     s.add_argument("--port", type=int, default=8090)
     p = sub.add_parser("passwd", help="задать пароль пользователю (и включить его)")
     p.add_argument("login")
@@ -22,7 +44,10 @@ def main() -> None:
 
         from .app import create_app
 
-        uvicorn.run(create_app(a.data), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="*")
+        for ip in _lan_addresses():
+            print(f"  панель и адрес для приставок: http://{ip}:{a.port}")
+        # X-Forwarded-* принимаются только от локального прокси (nginx/Caddy на этой же машине)
+        uvicorn.run(create_app(a.data), host=a.host, port=a.port, proxy_headers=True, forwarded_allow_ips="127.0.0.1")
     elif a.cmd == "passwd":
         from sqlalchemy import select
 

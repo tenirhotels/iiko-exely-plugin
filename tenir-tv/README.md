@@ -93,18 +93,18 @@ tools/build-offline.sh          # → dist/tenir-tv-0.1.0.apk
 Для эксплуатации подпишите APK постоянным ключом отеля: обновление поверх установленной версии возможно только
 тем же ключом.
 
-### Результаты сборки и тестов (20.10.2026, версия 0.2.0)
+### Результаты сборки и тестов (20.10.2026, версия 0.2.1)
 
 Gradle 8.9, AGP 8.5.2, Kotlin 2.0.21, Android SDK 34, JDK 21:
 
 | Проверка | Результат |
 |---|---|
-| `./gradlew :core:test` | 35 тестов, 0 ошибок (+1 сквозной с настоящим сервисом: `TENIR_CLOUD_E2E_URL=…`, пройден) |
+| `./gradlew :core:test` | 36 тестов, 0 ошибок (+1 сквозной с настоящим сервисом: `TENIR_CLOUD_E2E_URL=…`, пройден) |
 | `./gradlew :app:testDebugUnitTest` (Robolectric 4.14.1, нативная графика) | 16 тестов, 0 ошибок; снимки 720p, 1080p, 3840×2160 и облачного режима — `docs/screenshots` |
 | `server: pytest` | 15 тестов, 0 ошибок; `ruff` — без замечаний |
 | `./gradlew :app:lintRelease` | 0 ошибок; предупреждения — в основном поля сервисного меню без автозаполнения |
 | `./gradlew :app:assembleRelease` | `app-release.apk`, ~0,9 МБ (R8), minSdk 24, targetSdk 34, подпись отладочным ключом |
-| `tools/build-offline.sh` | `dist/tenir-tv-0.2.0.apk`, ~1 МБ — запасная сборка без Google Maven |
+| `tools/build-offline.sh` | `dist/tenir-tv-0.2.1.apk`, ~1 МБ — запасная сборка без Google Maven |
 
 ## Установка на Android TV Box
 
@@ -118,7 +118,7 @@ Gradle 8.9, AGP 8.5.2, Kotlin 2.0.21, Android SDK 34, JDK 21:
 
 ```bash
 adb connect 192.168.1.50:5555
-adb install -r tenir-tv-0.2.0.apk
+adb install -r tenir-tv-0.2.1.apk
 
 # настройки номера: файл применяется при запуске и удаляется (токен не остаётся в общей памяти)
 adb shell mkdir -p /sdcard/Android/data/kz.tenir.tv/files

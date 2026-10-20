@@ -26,7 +26,7 @@ tenircloud = "tenircloud.__main__:main"
 include = ["tenircloud*"]
 
 [tool.setuptools.package-data]
-tenircloud = ["templates/*.html", "static/*", "default-content.json"]
+tenircloud = ["templates/*.html", "static/*", "static/demo/*", "default-content.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

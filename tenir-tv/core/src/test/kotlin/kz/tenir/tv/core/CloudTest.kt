@@ -148,6 +148,15 @@ class CloudTest {
     }
 
     @Test
+    fun serverAddressWithoutSchemeGetsHttp() {
+        assertEquals("http://192.168.1.10:8090", CloudClient.normalizeUrl(" 192.168.1.10:8090/ "))
+        assertEquals("https://tv.tenir.kz", CloudClient.normalizeUrl("https://tv.tenir.kz/"))
+        val cloud = FakeCloud()
+        CloudClient(cloud, "192.168.1.10:8090", MemoryTextStore()).register("m", "11", "0.2.1")
+        assertEquals("http://192.168.1.10:8090/api/tv/v1/register", cloud.posts[0].first)
+    }
+
+    @Test
     fun deviceConfigCloudMode() {
         val c = DeviceConfig.parse("""{"cloudUrl": "https://tv.tenir.kz"}""")
         assertTrue(c.isCloud)

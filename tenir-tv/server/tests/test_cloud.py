@@ -363,3 +363,13 @@ def test_tv_cannot_read_other_rooms(app, admin, hub):
     pair(admin, app, d["pairing_code"], "305")
     body = json.dumps(hb(c), ensure_ascii=False)
     assert "Один" in body and "Второй" not in body and "hub-secret" not in body
+
+
+def test_healthz_and_http_login_cookie(tmp_path, hub):
+    """Локальная сеть: панель по обычному HTTP — вход работает (cookie без флага Secure по умолчанию)."""
+    app = create_app(tmp_path, hub_transport=httpx.MockTransport(hub.handler), background=False)
+    c = TestClient(app, base_url="http://192.168.1.10:8090")
+    r = c.get("/healthz")
+    assert r.status_code == 200 and r.json()["ok"] is True
+    c.post("/setup", data={"login": "admin", "name": "A", "password": "very-secret-1"})
+    assert c.get("/", follow_redirects=False).status_code == 200  # сессия сохранилась по http://

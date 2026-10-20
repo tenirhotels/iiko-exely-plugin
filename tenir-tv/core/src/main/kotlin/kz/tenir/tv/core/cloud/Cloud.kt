@@ -99,7 +99,7 @@ class CloudClient(
     baseUrl: String,
     private val store: TextStore,
 ) {
-    private val base = baseUrl.trim().trimEnd('/') + "/api/tv/v1"
+    private val base = normalizeUrl(baseUrl) + "/api/tv/v1"
 
     val contentUrl: String get() = "$base/content"
 
@@ -166,6 +166,12 @@ class CloudClient(
 
     companion object {
         const val KEY = "cloud.key"
+
+        /** «192.168.1.10:8090» → «http://192.168.1.10:8090»: в локальной сети схему часто не вводят. */
+        fun normalizeUrl(raw: String): String {
+            val t = raw.trim().trimEnd('/')
+            return if (t.startsWith("http://") || t.startsWith("https://")) t else "http://$t"
+        }
     }
 }
 

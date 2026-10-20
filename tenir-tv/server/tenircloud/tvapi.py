@@ -42,7 +42,7 @@ async def register(request: Request):
     q = hits.setdefault(ip, deque())
     while q and now - q[0] > 60:
         q.popleft()
-    if len(q) >= 10:
+    if len(q) >= request.app.state.register_limit:
         raise HTTPException(429, "слишком много регистраций, повторите через минуту")
     q.append(now)
     body = await _json(request)
