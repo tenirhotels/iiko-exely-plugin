@@ -6,7 +6,7 @@
 <div class="grid g3"><div><label>Код в Hotel Hub</label><input type="text" name="code" value="{{ p.code if p else '' }}" placeholder="9305"></div>
 <div><label>Название</label><input type="text" name="name" value="{{ p.name if p else '' }}"></div>
 <div><label>Часовой пояс</label><input type="text" name="timezone" value="{{ p.timezone if p else 'Asia/Almaty' }}"></div></div>
-<div class="grid g3"><div><label>Адрес Hotel Hub</label><input type="text" name="hub_url" value="{{ p.hub_url if p else '' }}" placeholder="http://hotelhub.local:8000"></div>
+<div class="grid g3"><div><label>Адрес Hotel Hub на VPS (https://…)</label><input type="text" name="hub_url" value="{{ p.hub_url if p else '' }}" placeholder="https://hub.example.com"></div>
 <div><label>Токен (права occupancy, guests){% if p and p.hub_token_enc %} — задан{% endif %}</label><input type="password" name="hub_token" placeholder="{{ 'оставьте пустым, чтобы не менять' if p and p.hub_token_enc else '' }}" autocomplete="off"></div>
 <div><label>Опрос хаба, с</label><input type="number" name="hub_poll_seconds" value="{{ p.hub_poll_seconds if p else 60 }}"></div></div>
 <div class="grid g3"><div><label>PIN сервисного меню приставок</label><input type="text" name="service_pin" placeholder="{{ 'задан' if p else '0000' }}"></div></div>

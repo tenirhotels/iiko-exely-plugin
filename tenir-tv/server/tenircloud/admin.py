@@ -29,6 +29,7 @@ from .db import (
     audit,
     utcnow,
 )
+from .hubsync import insecure_over_internet, normalize_hub_url
 from .media import MediaError, store
 from .security import check_password, hash_password
 
@@ -1023,7 +1024,7 @@ async def settings_save(request: Request):
             p = Property(code=code, name=name)
             db.add(p)
         p.code, p.name, p.timezone = code, name, tz
-        p.hub_url = str(f.get("hub_url", "")).strip()
+        p.hub_url = normalize_hub_url(str(f.get("hub_url", "")))
         token = str(f.get("hub_token", "")).strip()
         if token:
             p.hub_token_enc = request.app.state.secrets.encrypt(token)
@@ -1038,6 +1039,9 @@ async def settings_save(request: Request):
         audit(db, user.login, "property.save", f"{p.code} {p.name}, хаб {p.hub_url or '—'}")
         db.commit()
         request.session["prop"] = p.id
+        if insecure_over_internet(p.hub_url):
+            return back(request, "/settings", "Сохранено, но адрес хаба по http:// не из локальной сети: токен будет "
+                        "уходить по интернету открытым текстом. Используйте https://", error=True)
     return back(request, "/settings", "Сохранено")
 
 

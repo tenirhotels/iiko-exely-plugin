@@ -373,3 +373,91 @@ def test_healthz_and_http_login_cookie(tmp_path, hub):
     assert r.status_code == 200 and r.json()["ok"] is True
     c.post("/setup", data={"login": "admin", "name": "A", "password": "very-secret-1"})
     assert c.get("/", follow_redirects=False).status_code == 200  # сессия сохранилась по http://
+
+
+# --- хаб на VPS в интернете ---
+
+def test_hub_url_normalization_and_http_warning():
+    from tenircloud.hubsync import insecure_over_internet, normalize_hub_url
+
+    assert normalize_hub_url("hub.example.com/") == "https://hub.example.com"
+    assert normalize_hub_url("http://192.168.1.5:8000") == "http://192.168.1.5:8000"
+    assert insecure_over_internet("http://hub.example.com")        # по интернету открытым текстом
+    assert insecure_over_internet("http://8.8.8.8:8000")
+    assert not insecure_over_internet("https://hub.example.com")
+    assert not insecure_over_internet("hub.example.com")            # станет https://
+    assert not insecure_over_internet("http://192.168.1.5:8000")    # локальная сеть
+    assert not insecure_over_internet("http://hotelhub.local:8000")
+    assert not insecure_over_internet("http://localhost:8000")
+
+
+def test_settings_warn_about_plain_http_over_internet(app, admin):
+    r = admin.post("/settings", data={"id": "1", "code": "9305", "name": "TENIR", "timezone": "Asia/Almaty",
+                                      "hub_url": "http://hub.example.com", "hub_poll_seconds": "60"})
+    assert "по интернету открытым текстом" in r.text
+    r = admin.post("/settings", data={"id": "1", "code": "9305", "name": "TENIR", "timezone": "Asia/Almaty",
+                                      "hub_url": "hub.example.com", "hub_poll_seconds": "60"})
+    assert prop(app).hub_url == "https://hub.example.com"  # без схемы → https
+
+
+def test_probe_steps_and_diagnostics(hub):
+    from tenircloud.hubsync import probe
+
+    hub.room("305", "checked_in", "S1")
+    hub.guests["S1"] = [{"role": "guest", "first_name": "Секрет", "last_name": "Имя"}]
+
+    def handler(request):
+        if request.url.path == "/v1/status":
+            return httpx.Response(200, json={"ok": True})
+        return hub.handler(request)
+
+    res = probe("https://hub.example.com", "9305", "t", httpx.MockTransport(handler))
+    assert all(ok for ok, _ in res) and len(res) == 3
+    assert "Секрет" not in " ".join(m for _, m in res)  # имена не печатаются
+    hub.code = 403
+    res = probe("https://hub.example.com", "9305", "t", httpx.MockTransport(lambda r: httpx.Response(
+        200 if r.url.path == "/v1/status" else 403, json={})))
+    assert not res[-1][0] and "occupancy" in res[-1][1]
+
+    def down(request):
+        raise httpx.ConnectError("Name or service not known")
+
+    res = probe("https://hub.example.com", "9305", "t", httpx.MockTransport(down))
+    assert not res[0][0] and "проверьте интернет" in res[0][1]
+
+
+def test_redirect_and_tls_errors_are_explained(app, hub):
+    from tenircloud.hubsync import HubError, HubSync
+
+    def redirect(request):
+        return httpx.Response(301, headers={"location": "https://hub.example.com/"})
+
+    sync = HubSync(app.state.db, app.state.secrets, transport=httpx.MockTransport(redirect))
+    with httpx.Client(transport=httpx.MockTransport(redirect), base_url="http://hub.example.com/") as c, \
+            pytest.raises(HubError, match="перенаправляет"):
+        sync._get(c, "v1/properties/9305/rooms")
+
+    def tls(request):
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed")
+
+    with httpx.Client(transport=httpx.MockTransport(tls), base_url="https://hub.example.com/") as c, \
+            pytest.raises(HubError, match="сертификат"):
+        sync._get(c, "v1/properties/9305/rooms")
+
+
+def test_poll_failures_slow_down_and_recover(app, hub):
+    hub.room("305", "booked")
+    with app.state.db.sessions() as db:
+        p = Property(code="9305", name="T", hub_url="https://hub.example.com",
+                     hub_token_enc=app.state.secrets.encrypt("t"))
+        db.add(p)
+        db.commit()
+        pid = p.id
+    hub.down = True
+    for _ in range(3):
+        app.state.hub.poll(pid)
+    st = app.state.hub.state(pid)
+    assert st.fails == 3 and "недоступен из этой сети" in st.last_error
+    hub.down = False
+    app.state.hub.poll(pid)
+    assert st.fails == 0 and st.last_error is None and st.rooms_total == 1
