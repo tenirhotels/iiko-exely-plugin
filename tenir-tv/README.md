@@ -6,6 +6,7 @@
 
 Аудит исходного проекта LauncherCompose и обоснование выбранной реализации — [docs/audit.md](docs/audit.md).
 Интеграция с Hotel Hub — [docs/hotel-hub.md](docs/hotel-hub.md). Формат серверного контента — [docs/content-format.md](docs/content-format.md).
+ТЗ на сервис управления телевизорами (учёт приставок, дизайн, контент, гости) — [docs/backend.md](docs/backend.md).
 
 ![Главный экран, Full HD](docs/screenshots/home-1080p.jpg)
 
