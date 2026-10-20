@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% from "_macros.html" import ltext %}
+{% block heading %}Сообщения на экран{% endblock %}
+{% block body %}
+{% if can_edit %}<form method="post" action="/messages" class="card"><h2>Новое сообщение</h2>
+{{ ltext('text', {}, 'Текст', True) }}
+<div class="grid g2"><div><label>Кому</label><select name="target"><option value="all">Все телевизоры отеля</option>
+{% for g in groups %}<option value="group:{{ g.id }}">Группа «{{ g.name }}»</option>{% endfor %}{% for r in rooms %}<option value="room:{{ r.id }}">Номер {{ r.label }}</option>{% endfor %}</select></div>
+<div><label>Показывать, часов (0 — до снятия)</label><input type="number" name="hours" value="4" min="0" step="0.5"></div></div>
+<p><button class="primary">Отправить</button></p></form>{% endif %}
+<div class="card"><table><tr><th>Текст</th><th>Кому</th><th>Создано</th><th>До</th><th></th></tr>
+{% for x in items %}<tr><td>{{ tr(x.text) }}</td><td>{{ x.target }}</td><td class="small">{{ x.m.created_at|local(prop) }} · {{ x.m.created_by }}</td><td class="small">{{ x.m.expires_at|local(prop) if x.m.expires_at else 'до снятия' }}</td>
+<td>{% if x.active %}<span class="pill ok">на экране</span>{% if can_edit %} <form method="post" action="/messages/{{ x.m.id }}/stop" class="inline"><button>Снять</button></form>{% endif %}{% else %}<span class="pill">завершено</span>{% endif %}</td></tr>
+{% else %}<tr><td class="muted">Сообщений не было</td></tr>{% endfor %}</table></div>
+{% endblock %}

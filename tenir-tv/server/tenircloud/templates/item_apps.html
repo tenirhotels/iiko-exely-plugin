@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block heading %}{{ 'Новое приложение' if new else 'Приложение' }}{% endblock %}
+{% block body %}
+<form method="post" class="card">
+<div class="grid g3"><div><label>id (используется в плитках)</label><input type="text" name="id" value="{{ item.id or '' }}"></div>
+<div><label>Название</label><input type="text" name="title" value="{{ item.title or '' }}"></div>
+<div><label>Цвет плитки</label><input type="text" name="color" value="{{ item.color or '' }}" placeholder="#E50914"></div></div>
+<label>Пакеты Android, по строке (первый установленный будет запущен)</label><textarea name="packages">{{ (item.packages or [])|join('\n') }}</textarea>
+{% if can_edit %}<p class="row"><button class="primary">Сохранить</button>{% if not new %}<button name="delete" value="1" class="danger">Удалить</button>{% endif %}<a href="/content">Отмена</a></p>{% endif %}
+</form>
+{% endblock %}

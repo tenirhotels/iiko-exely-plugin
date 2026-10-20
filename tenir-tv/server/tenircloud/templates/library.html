@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block heading %}Медиатека{% endblock %}
+{% block body %}
+{% if can_edit %}<form method="post" action="/library" enctype="multipart/form-data" class="card row"><input type="file" name="files" multiple accept="image/*"><button class="primary">Загрузить</button>
+<span class="small muted">JPEG, PNG, WebP до 25 МБ; больше 3840 px уменьшается. Фон — 3840×2160, баннеры — от 2000 px по ширине.</span></form>{% endif %}
+<div class="card thumbs">{% for m in rows %}<figure><img src="/media/{{ m.filename }}" loading="lazy" alt=""><figcaption>{{ m.original_name or m.filename }}<br>{{ m.width }}×{{ m.height }} · {{ (m.size/1024)|round|int }} КБ<br><code>/media/{{ m.filename }}</code>
+{% if can_edit %}<form method="post" action="/library/{{ m.id }}/delete" class="inline" onsubmit="return confirm('Удалить?')"><button class="danger">удалить</button></form>{% endif %}</figcaption></figure>
+{% else %}<p class="muted">Файлов нет</p>{% endfor %}</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block heading %}Черновик в JSON{% endblock %}
+{% block body %}
+<form method="post" class="card"><p class="small muted">Формат — docs/content-format.md. Сохранение заменяет черновик целиком (только администратор).</p>
+<textarea name="json" class="code">{{ text }}</textarea>{% if is_admin %}<p><button class="primary">Сохранить черновик</button></p>{% endif %}</form>
+{% endblock %}

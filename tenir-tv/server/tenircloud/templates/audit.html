@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block heading %}Журнал{% endblock %}
+{% block body %}
+<div class="card"><table><tr><th>Время</th><th>Кто</th><th>Действие</th><th>Подробности</th></tr>
+{% for a in rows %}<tr><td class="small">{{ a.at|local(prop) }}</td><td>{{ a.who }}</td><td>{{ a.action }}</td><td class="small">{{ a.detail }}</td></tr>{% endfor %}</table></div>
+{% endblock %}

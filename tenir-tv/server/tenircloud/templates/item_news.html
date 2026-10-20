@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% from "_macros.html" import ltext, imagepick %}
+{% block heading %}{{ 'Новая новость' if new else 'Новость' }}{% endblock %}
+{% block body %}
+<form method="post" class="card">
+<div class="grid g2"><div><label>id (латиница)</label><input type="text" name="id" value="{{ item.id or '' }}"></div><div><label>Дата</label><input type="date" name="date" value="{{ item.date or '' }}"></div></div>
+{{ ltext('title', item.title or {}, 'Заголовок') }}
+{{ ltext('summary', item.summary or {}, 'Кратко (в списке)') }}
+{{ ltext('body', item.body or {}, 'Текст', True) }}
+<label>Изображение</label>{{ imagepick('image', item.image, media) }}
+{% if can_edit %}<p class="row"><button class="primary">Сохранить</button>{% if not new %}<button name="delete" value="1" class="danger">Удалить</button>{% endif %}<a href="/content">Отмена</a></p>{% endif %}
+</form>
+{% endblock %}

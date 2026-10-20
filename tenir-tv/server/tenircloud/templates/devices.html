@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% from "_macros.html" import online %}
+{% block heading %}Приставки{% endblock %}
+{% block body %}
+{% if can_edit %}<div class="card"><h2>Подключить приставку</h2>
+<p class="small muted">Установите TENIR TV, укажите в сервисном меню адрес этого сервиса — на экране появится 6-значный код.</p>
+<form method="post" action="/pair" class="row">
+  <input type="text" name="code" placeholder="Код с экрана" style="width:160px" inputmode="numeric" required>
+  <select name="room_id" style="width:200px" required><option value="">Номер…</option>{% for r in rooms %}<option value="{{ r.id }}">{{ r.label }}</option>{% endfor %}</select>
+  <button class="primary">Подключить</button>
+</form>
+{% if pending %}<p class="small">Ждут подключения: {% for d in pending %}<b>{{ d.pairing_code or '…' }}</b> ({{ d.model or 'приставка' }}, {{ d.last_seen_at|ago }}){{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+</div>{% endif %}
+<div class="card">
+<form class="row" method="get"><input type="text" name="q" value="{{ q }}" placeholder="Номер, имя, модель" style="width:240px">
+<select name="state" style="width:180px"><option value="">Все</option><option value="online" {{ 'selected' if state=='online' }}>Онлайн</option><option value="offline" {{ 'selected' if state=='offline' }}>Нет связи</option><option value="warn" {{ 'selected' if state=='warn' }}>С предупреждениями</option></select>
+<button>Показать</button><span class="muted small">{{ rows|length }} шт.</span></form>
+<table><tr><th>Номер</th><th>Имя</th><th>Связь</th><th>Последний сеанс</th><th>Версия</th><th>Модель</th><th>Сеть</th><th>Экран</th><th>Предупреждения</th></tr>
+{% for d in rows %}{% set s = d.status %}<tr>
+<td><b>{{ d.room.label if d.room else '—' }}</b></td><td><a href="/devices/{{ d.id }}">{{ d.name or d.uid }}</a></td><td>{{ online(d) }}</td>
+<td>{{ d.last_seen_at|ago }}</td><td>{{ d.app_version or '—' }}</td><td class="small">{{ d.model }}<br><span class="muted">Android {{ d.android }}</span></td>
+<td class="small">{{ {'ethernet':'Ethernet','wifi':'Wi-Fi','cellular':'мобильная'}.get((s.network or {}).type, (s.network or {}).type or '—') }}</td><td class="small">{% if s.display %}{{ s.display.width }}×{{ s.display.height }}{% if s.display.uhd %} · 4K{% endif %}{% else %}—{% endif %}</td>
+<td>{% for w in warnings(d) %}<span class="pill warn">{{ w }}</span> {% endfor %}</td></tr>
+{% else %}<tr><td colspan="9" class="muted">Приставок нет</td></tr>{% endfor %}</table></div>
+{% endblock %}

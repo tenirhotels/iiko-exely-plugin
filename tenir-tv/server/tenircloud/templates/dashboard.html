@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% from "_macros.html" import online %}
+{% block heading %}Дашборд{% endblock %}
+{% block body %}
+{% if not cards %}<div class="card">Отелей пока нет. <a href="/settings">Добавьте отель и подключение к Hotel Hub</a>.</div>{% endif %}
+{% for c in cards %}
+<div class="card">
+  <h2>{{ c.p.name }} <span class="muted">· {{ c.p.code }}</span></h2>
+  <div class="grid g4">
+    <div><div class="kpi">{{ c.online }} / {{ c.devices }}<small>приставок онлайн</small></div></div>
+    <div><div class="kpi" style="color:{{ 'var(--bad)' if c.offline else 'inherit' }}">{{ c.offline }}<small>нет связи или новые</small></div></div>
+    <div><div class="kpi">{{ c.hub.checked_in }} / {{ c.hub.rooms_total }}<small>заселено номеров (Hotel Hub)</small></div></div>
+    <div>{% if c.hub.last_error %}<span class="pill bad">Hotel Hub: {{ c.hub.last_error }}</span>
+      {% elif c.hub.last_ok_at %}<span class="pill ok">Hotel Hub на связи</span><div class="small muted">ответ {{ c.hub.last_ok_at.replace(tzinfo=None)|ago }}</div>
+      {% else %}<span class="pill">Hotel Hub не опрашивался</span>{% endif %}
+      <div class="small muted" style="margin-top:6px">Контент: {% if c.content %}версия {{ c.content.version }} от {{ c.content.created_at|local(c.p) }}{% else %}не опубликован (демо){% endif %}</div>
+    </div>
+  </div>
+  {% if c.warnings %}<h2 style="margin-top:16px">Предупреждения ({{ c.warn_count }})</h2>
+  <table>{% for d, w in c.warnings %}<tr><td><a href="/devices/{{ d.id }}">{{ d.name or d.uid }}</a></td><td>{{ d.room.label if d.room else '—' }}</td><td><span class="pill warn">{{ w }}</span></td></tr>{% endfor %}</table>{% endif %}
+  <p class="small muted">Версии приложения: {% for v, n in c.versions.items() %}{{ v }} — {{ n }}{{ ', ' if not loop.last }}{% endfor %}</p>
+</div>
+{% endfor %}
+{% if pending %}<div class="card"><h2>Ждут подключения ({{ pending|length }})</h2>
+<table><tr><th>Код на экране</th><th>Модель</th><th>Связь</th><th>Зарегистрирована</th></tr>
+{% for d in pending %}<tr><td><b>{{ d.pairing_code or '…' }}</b></td><td>{{ d.model }}</td><td>{{ online(d) }}</td><td>{{ d.created_at|local(prop) }}</td></tr>{% endfor %}</table>
+<p><a href="/devices">Подключить в разделе «Приставки»</a></p></div>{% endif %}
+{% endblock %}

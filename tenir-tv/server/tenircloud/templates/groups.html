@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block heading %}Группы номеров{% endblock %}
+{% block body %}
+<div class="card small">Группа задаёт номерам своё приветствие, баннеры, плитки, цвет и язык (например: этаж люкс, свадебные пакеты, конференция). Номера в группы — в разделе «Номера».</div>
+<div class="card"><table><tr><th>Группа</th><th>Номеров</th><th>Переопределяет</th></tr>
+{% for g in rows %}<tr><td><a href="/groups/{{ g.id }}">{{ g.name }}</a></td><td>{{ counts.get(g.id, 0) }}</td><td class="small">{{ g.overrides.keys()|join(', ') or '—' }}</td></tr>{% else %}<tr><td class="muted">Групп нет</td></tr>{% endfor %}</table></div>
+{% if can_edit %}<div class="card"><h2>Новая группа</h2><form method="post" action="/groups" class="row"><input type="text" name="name" placeholder="Молодожёны" style="width:260px"><button class="primary">Создать</button></form></div>{% endif %}
+{% endblock %}
